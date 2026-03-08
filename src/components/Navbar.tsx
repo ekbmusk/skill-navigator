@@ -21,15 +21,17 @@ const Navbar = () => {
         </a>
 
         <div className="hidden md:flex items-center gap-8">
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {l.label}
-            </a>
-          ))}
+          {links.map((l) =>
+            l.isRoute ? (
+              <Link key={l.href} to={l.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {l.label}
+              </Link>
+            ) : (
+              <a key={l.href} href={l.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {l.label}
+              </a>
+            )
+          )}
           <Button size="sm">Начать</Button>
         </div>
 
@@ -40,16 +42,17 @@ const Navbar = () => {
 
       {open && (
         <div className="md:hidden border-t border-border bg-background p-4 space-y-3">
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="block text-sm text-muted-foreground hover:text-foreground"
-              onClick={() => setOpen(false)}
-            >
-              {l.label}
-            </a>
-          ))}
+          {links.map((l) =>
+            l.isRoute ? (
+              <Link key={l.href} to={l.href} className="block text-sm text-muted-foreground hover:text-foreground" onClick={() => setOpen(false)}>
+                {l.label}
+              </Link>
+            ) : (
+              <a key={l.href} href={l.href} className="block text-sm text-muted-foreground hover:text-foreground" onClick={() => setOpen(false)}>
+                {l.label}
+              </a>
+            )
+          )}
           <Button size="sm" className="w-full">Начать</Button>
         </div>
       )}
