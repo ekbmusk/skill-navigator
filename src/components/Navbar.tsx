@@ -9,7 +9,7 @@ const Navbar = () => {
   const links = [
     { label: "Диагностика", href: "/diagnostics", isRoute: true },
     { label: "Дашборд", href: "/dashboard", isRoute: true },
-    { label: "Кейсы", href: "#cases", isRoute: false },
+    { label: "Кейсы", href: "/case", isRoute: true },
   ];
 
   return (
