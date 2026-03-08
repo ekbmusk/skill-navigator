@@ -1,30 +1,17 @@
 import { motion } from "framer-motion";
 import { Brain, Target, BarChart3, Zap } from "lucide-react";
-
-const features = [
-  {
-    icon: Brain,
-    title: "Когнитивные навыки",
-    description: "Оценка критического мышления, анализа и способности решать сложные задачи",
-  },
-  {
-    icon: Target,
-    title: "Soft Skills",
-    description: "Коммуникация, лидерство, работа в команде и эмоциональный интеллект",
-  },
-  {
-    icon: BarChart3,
-    title: "Профессиональные навыки",
-    description: "Технические компетенции и специализированные знания по направлению",
-  },
-  {
-    icon: Zap,
-    title: "Адаптивность",
-    description: "Гибкость мышления, скорость обучения и реакция на изменения",
-  },
-];
+import { useLang } from "@/i18n/LanguageContext";
 
 const DiagnosticsSection = () => {
+  const { t } = useLang();
+
+  const features = [
+    { icon: Brain, title: t.diagSection.cognitive, description: t.diagSection.cognitiveDesc },
+    { icon: Target, title: t.diagSection.soft, description: t.diagSection.softDesc },
+    { icon: BarChart3, title: t.diagSection.professional, description: t.diagSection.professionalDesc },
+    { icon: Zap, title: t.diagSection.adaptability, description: t.diagSection.adaptabilityDesc },
+  ];
+
   return (
     <section id="diagnostics" className="py-24 md:py-32">
       <div className="container px-4">
@@ -34,19 +21,17 @@ const DiagnosticsSection = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <span className="text-primary text-sm font-medium uppercase tracking-wider">Диагностика</span>
+          <span className="text-primary text-sm font-medium uppercase tracking-wider">{t.diagSection.label}</span>
           <h2 className="font-display text-3xl md:text-5xl font-bold mt-3">
-            Выявите <span className="text-gradient">скрытые навыки</span>
+            {t.diagSection.title} <span className="text-gradient">{t.diagSection.titleHighlight}</span>
           </h2>
-          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-            Комплексная диагностика через интерактивные задания, тесты и симуляции
-          </p>
+          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">{t.diagSection.subtitle}</p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {features.map((f, i) => (
             <motion.div
-              key={f.title}
+              key={i}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}

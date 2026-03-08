@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { useLang } from "@/i18n/LanguageContext";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,6 +19,7 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLang();
 
   useEffect(() => {
     if (user) navigate("/");
@@ -29,102 +31,57 @@ const AuthPage = () => {
 
     if (isLogin) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        toast.error(error.message);
-      } else {
-        navigate("/");
-      }
+      if (error) toast.error(error.message);
+      else navigate("/");
     } else {
       const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-          emailRedirectTo: window.location.origin,
-        },
+        email, password,
+        options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
       });
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Проверьте почту для подтверждения регистрации");
-      }
+      if (error) toast.error(error.message);
+      else toast.success(t.auth.checkEmail);
     }
     setLoading(false);
   };
 
   const handleGoogle = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (error) toast.error("Ошибка входа через Google");
+    const { error } = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    if (error) toast.error(t.auth.googleError);
   };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md p-8 rounded-2xl bg-card border border-border shadow-card"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md p-8 rounded-2xl bg-card border border-border shadow-card">
         <div className="text-center mb-8">
           <h1 className="font-display text-2xl font-bold">
-            <span className="text-gradient">Skill</span>
-            <span className="text-foreground">Map</span>
+            <span className="text-gradient">Skill</span><span className="text-foreground">Map</span>
           </h1>
-          <p className="text-muted-foreground mt-2">
-            {isLogin ? "Войдите в аккаунт" : "Создайте аккаунт"}
-          </p>
+          <p className="text-muted-foreground mt-2">{isLogin ? t.auth.loginTitle : t.auth.signupTitle}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div className="space-y-2">
-              <Label htmlFor="name">Имя</Label>
-              <Input
-                id="name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ваше имя"
-                required={!isLogin}
-              />
+              <Label htmlFor="name">{t.auth.name}</Label>
+              <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t.auth.namePlaceholder} required={!isLogin} />
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
+            <Label htmlFor="email">{t.auth.email}</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Пароль</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-            />
+            <Label htmlFor="password">{t.auth.password}</Label>
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
           </div>
-
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Загрузка..." : isLogin ? "Войти" : "Зарегистрироваться"}
+            {loading ? t.auth.loading : isLogin ? t.auth.login : t.auth.signup}
           </Button>
         </form>
 
         <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-card px-2 text-muted-foreground">или</span>
-          </div>
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+          <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">{t.auth.or}</span></div>
         </div>
 
         <Button variant="outline" className="w-full" onClick={handleGoogle}>
@@ -134,17 +91,13 @@ const AuthPage = () => {
             <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
             <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
-          Войти через Google
+          {t.auth.googleLogin}
         </Button>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          {isLogin ? "Нет аккаунта?" : "Уже есть аккаунт?"}{" "}
-          <button
-            type="button"
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-primary hover:underline font-medium"
-          >
-            {isLogin ? "Зарегистрироваться" : "Войти"}
+          {isLogin ? t.auth.noAccount : t.auth.hasAccount}{" "}
+          <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline font-medium">
+            {isLogin ? t.auth.signup : t.auth.login}
           </button>
         </p>
       </motion.div>
