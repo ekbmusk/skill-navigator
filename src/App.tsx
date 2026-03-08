@@ -9,6 +9,7 @@ import DiagnosticsPage from "./pages/DiagnosticsPage";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import CasePage from "./pages/CasePage";
 import AuthPage from "./pages/AuthPage";
+import ProfilePage from "./pages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +38,11 @@ const App = () => (
             <Route path="/case" element={
               <ProtectedRoute>
                 <CasePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

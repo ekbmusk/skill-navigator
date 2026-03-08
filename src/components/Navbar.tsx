@@ -36,7 +36,7 @@ const Navbar = () => {
           ))}
           {user ? (
             <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Link to="/profile" className="text-xs text-muted-foreground flex items-center gap-1.5 hover:text-foreground transition-colors">
                 <User size={14} />
                 {profile?.full_name || user.email}
                 {role && (
@@ -44,7 +44,7 @@ const Navbar = () => {
                     {role === "teacher" ? "Преподаватель" : "Студент"}
                   </span>
                 )}
-              </span>
+              </Link>
               <Button size="sm" variant="outline" onClick={handleSignOut}>
                 <LogOut size={14} className="mr-1" /> Выйти
               </Button>
