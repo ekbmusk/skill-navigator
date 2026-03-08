@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 
 const HeroSection = () => {
@@ -39,8 +40,8 @@ const HeroSection = () => {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-base gap-2">
-              Пройти диагностику <ArrowRight size={18} />
+            <Button size="lg" className="text-base gap-2" asChild>
+              <Link to="/diagnostics">Пройти диагностику <ArrowRight size={18} /></Link>
             </Button>
             <Button size="lg" variant="outline" className="text-base">
               Узнать больше
