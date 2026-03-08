@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
 
   const links = [
-    { label: "Диагностика", href: "#diagnostics" },
-    { label: "Преподавателям", href: "#teachers" },
-    { label: "Кейсы", href: "#cases" },
+    { label: "Диагностика", href: "/diagnostics", isRoute: true },
+    { label: "Дашборд", href: "/dashboard", isRoute: true },
+    { label: "Кейсы", href: "#cases", isRoute: false },
   ];
 
   return (
