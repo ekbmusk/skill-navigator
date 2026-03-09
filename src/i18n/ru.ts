@@ -144,6 +144,12 @@ export const ru = {
     saving: "Сохранение…",
     saved: "Профиль обновлён",
     saveError: "Ошибка сохранения",
+    tests: "Тесты",
+    testResults: "Результаты тестов",
+    noTests: "Тесты не пройдены",
+    back: "Назад",
+    noAttempts: "Вы ещё не прошли ни одну диагностику",
+    startTest: "Пройти диагностику",
   },
 
   // Case Page

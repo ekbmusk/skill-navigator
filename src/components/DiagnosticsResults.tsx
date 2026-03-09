@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Download } from "lucide-react";
@@ -5,6 +6,8 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer,
 } from "recharts";
 import { useLang } from "@/i18n/LanguageContext";
+import { useDiagnostics } from "@/hooks/useDiagnostics";
+import type { Tables } from "@/integrations/supabase/types";
 
 interface Result {
   category: string;
@@ -19,6 +22,14 @@ interface Props {
 
 const DiagnosticsResults = ({ results, onRestart }: Props) => {
   const { t } = useLang();
+  const { downloadAsCSV, loading: loadingHistory } = useDiagnostics();
+  const [savedResult, setSavedResult] = useState<Tables<"diagnostics_results"> | null>(null);
+
+  useEffect(() => {
+    // In a real scenario, we'd load the saved result from the DB
+    // For now, we'll just track that we're on the results page
+    console.log("Results displayed successfully");
+  }, []);
 
   const getLevel = (score: number) => {
     if (score >= 80) return { text: t.results.excellent, color: "text-green-400" };
@@ -36,6 +47,26 @@ const DiagnosticsResults = ({ results, onRestart }: Props) => {
       adaptability: t.results.recAdaptability,
     };
     return recs[category] || "";
+  };
+
+  const handleDownload = () => {
+    // Create a mock result object for download
+    // In a real scenario, this would come from props or Supabase
+    const mockResult: Tables<"diagnostics_results"> = {
+      id: "temp-" + Date.now(),
+      user_id: "",
+      cognitive_score: results.find(r => r.category === "cognitive")?.score || 0,
+      soft_score: results.find(r => r.category === "soft")?.score || 0,
+      professional_score: results.find(r => r.category === "professional")?.score || 0,
+      adaptability_score: results.find(r => r.category === "adaptability")?.score || 0,
+      average_score: avgScore,
+      answers: {},
+      completed_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      version: 1,
+    };
+
+    downloadAsCSV(mockResult, "Student");
   };
 
   const avgScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length);
@@ -100,7 +131,7 @@ const DiagnosticsResults = ({ results, onRestart }: Props) => {
         <Button variant="outline" onClick={onRestart} className="gap-2">
           <RotateCcw size={16} /> {t.results.restart}
         </Button>
-        <Button className="gap-2">
+        <Button onClick={handleDownload} disabled={loadingHistory} className="gap-2">
           <Download size={16} /> {t.results.download}
         </Button>
       </div>
