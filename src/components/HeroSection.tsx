@@ -143,7 +143,7 @@ const HeroSection = () => {
               </motion.div>
 
               {/* Heading */}
-              <h1 className="font-display font-800 tracking-[-0.04em] leading-[0.95]">
+              <h1 className="font-display font-bold tracking-[-0.03em] leading-[0.95]">
                 <motion.span
                   className="block text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-foreground"
                   initial={{ opacity: 0, y: 30 }}

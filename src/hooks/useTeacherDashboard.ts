@@ -302,7 +302,51 @@ export function useTeacherDashboard(): UseTeacherDashboardResult {
   const loadStudentCaseDetails = useCallback(
     async (studentId: string): Promise<StudentCaseDetail[]> => {
       try {
-        // Get simulation participations with completed sessions
+        const results: StudentCaseDetail[] = [];
+
+        // 1. Get case solutions (always present — submitted directly)
+        const { data: solutions } = await supabase
+          .from("case_solutions")
+          .select("id, case_id, solution_text, score, submitted_at")
+          .eq("user_id", studentId)
+          .order("submitted_at", { ascending: false });
+
+        if (solutions && solutions.length > 0) {
+          // Fetch case titles for these solutions
+          const caseIds = [...new Set(solutions.map(s => s.case_id))];
+          const { data: cases } = await supabase
+            .from("cases")
+            .select("id, title, title_kz")
+            .in("id", caseIds);
+
+          const caseMap = new Map<string, { title: string; title_kz: string }>();
+          if (cases) {
+            for (const c of cases as any[]) {
+              caseMap.set(c.id, { title: c.title, title_kz: c.title_kz || c.title });
+            }
+          }
+
+          for (const sol of solutions) {
+            const caseInfo = caseMap.get(sol.case_id);
+            results.push({
+              sessionId: sol.id,
+              caseTitle: caseInfo?.title ?? "",
+              caseTitleKz: caseInfo?.title_kz ?? caseInfo?.title ?? "",
+              role: "",
+              completedAt: sol.submitted_at ?? "",
+              peerCommunication: null,
+              peerTeamwork: null,
+              peerLeadership: null,
+              peerProblemSolving: null,
+              peerAvg: null,
+              solutionId: sol.id,
+              solutionText: sol.solution_text,
+              solutionScore: sol.score,
+            });
+          }
+        }
+
+        // 2. Also check simulation participations (for full simulation flow)
         const { data: participations } = await supabase
           .from("simulation_participants" as any)
           .select(
@@ -311,101 +355,70 @@ export function useTeacherDashboard(): UseTeacherDashboardResult {
           .eq("user_id", studentId)
           .eq("simulation_sessions.status" as any, "completed");
 
-        if (!participations || participations.length === 0) return [];
+        if (participations && participations.length > 0) {
+          const sessionIds = (participations as any[]).map((p: any) => p.session_id as string);
 
-        const sessionIds = (participations as any[]).map(
-          (p: any) => p.session_id as string
-        );
+          const { data: feedback } = await supabase
+            .from("peer_feedback" as any)
+            .select("session_id, communication, teamwork, leadership, problem_solving, reviewer_id, reviewee_id")
+            .in("session_id", sessionIds)
+            .eq("reviewee_id", studentId);
 
-        // Get peer feedback for this student across these sessions
-        const { data: feedback } = await supabase
-          .from("peer_feedback" as any)
-          .select(
-            "session_id, communication, teamwork, leadership, problem_solving, reviewer_id, reviewee_id"
-          )
-          .in("session_id", sessionIds)
-          .eq("reviewee_id", studentId);
-
-        // Group feedback by session (exclude self-reviews)
-        const feedbackBySession = new Map<
-          string,
-          { comm: number[]; team: number[]; lead: number[]; prob: number[] }
-        >();
-        if (feedback) {
-          for (const f of feedback as any[]) {
-            if (f.reviewer_id === f.reviewee_id) continue;
-            const sid = f.session_id as string;
-            const entry = feedbackBySession.get(sid) ?? {
-              comm: [],
-              team: [],
-              lead: [],
-              prob: [],
-            };
-            entry.comm.push(f.communication ?? 0);
-            entry.team.push(f.teamwork ?? 0);
-            entry.lead.push(f.leadership ?? 0);
-            entry.prob.push(f.problem_solving ?? 0);
-            feedbackBySession.set(sid, entry);
+          const feedbackBySession = new Map<string, { comm: number[]; team: number[]; lead: number[]; prob: number[] }>();
+          if (feedback) {
+            for (const f of feedback as any[]) {
+              if (f.reviewer_id === f.reviewee_id) continue;
+              const sid = f.session_id as string;
+              const entry = feedbackBySession.get(sid) ?? { comm: [], team: [], lead: [], prob: [] };
+              entry.comm.push(f.communication ?? 0);
+              entry.team.push(f.teamwork ?? 0);
+              entry.lead.push(f.leadership ?? 0);
+              entry.prob.push(f.problem_solving ?? 0);
+              feedbackBySession.set(sid, entry);
+            }
           }
-        }
 
-        // Get case solutions for this student
-        const { data: solutions } = await supabase
-          .from("case_solutions")
-          .select("id, case_id, solution_text, score")
-          .eq("user_id", studentId);
+          const avg = (arr: number[]) =>
+            arr.length > 0 ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : null;
 
-        // Map solutions by case_id
-        const solutionByCaseId = new Map<string, (typeof solutions extends (infer U)[] | null ? U : never)>();
-        if (solutions) {
-          for (const s of solutions) {
-            solutionByCaseId.set(s.case_id, s);
-          }
-        }
+          // Check which case_ids we already have from solutions to avoid duplicates
+          const existingCaseIds = new Set(results.map(r => r.caseTitle));
 
-        const avg = (arr: number[]) =>
-          arr.length > 0
-            ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10
-            : null;
+          for (const p of participations as any[]) {
+            const session = p.simulation_sessions;
+            const caseData = session.cases;
+            // Skip if we already have a solution entry for this case
+            if (existingCaseIds.has(caseData?.title)) continue;
 
-        return (participations as any[]).map((p: any) => {
-          const session = p.simulation_sessions;
-          const caseData = session.cases;
-          const fb = feedbackBySession.get(p.session_id);
-          const sol = solutionByCaseId.get(session.case_id);
-
-          const peerComm = fb ? avg(fb.comm) : null;
-          const peerTeam = fb ? avg(fb.team) : null;
-          const peerLead = fb ? avg(fb.lead) : null;
-          const peerProb = fb ? avg(fb.prob) : null;
-
-          const peerScores = [peerComm, peerTeam, peerLead, peerProb].filter(
-            (v): v is number => v !== null
-          );
-          const peerAvg =
-            peerScores.length > 0
-              ? Math.round(
-                  (peerScores.reduce((a, b) => a + b, 0) / peerScores.length) *
-                    10
-                ) / 10
+            const fb = feedbackBySession.get(p.session_id);
+            const peerComm = fb ? avg(fb.comm) : null;
+            const peerTeam = fb ? avg(fb.team) : null;
+            const peerLead = fb ? avg(fb.lead) : null;
+            const peerProb = fb ? avg(fb.prob) : null;
+            const peerScores = [peerComm, peerTeam, peerLead, peerProb].filter((v): v is number => v !== null);
+            const peerAvg = peerScores.length > 0
+              ? Math.round((peerScores.reduce((a, b) => a + b, 0) / peerScores.length) * 10) / 10
               : null;
 
-          return {
-            sessionId: p.session_id,
-            caseTitle: caseData?.title ?? "",
-            caseTitleKz: caseData?.title_kz ?? caseData?.title ?? "",
-            role: p.role ?? "",
-            completedAt: session.completed_at ?? "",
-            peerCommunication: peerComm,
-            peerTeamwork: peerTeam,
-            peerLeadership: peerLead,
-            peerProblemSolving: peerProb,
-            peerAvg,
-            solutionId: sol?.id ?? null,
-            solutionText: sol?.solution_text ?? null,
-            solutionScore: sol?.score ?? null,
-          };
-        });
+            results.push({
+              sessionId: p.session_id,
+              caseTitle: caseData?.title ?? "",
+              caseTitleKz: caseData?.title_kz ?? caseData?.title ?? "",
+              role: p.role ?? "",
+              completedAt: session.completed_at ?? "",
+              peerCommunication: peerComm,
+              peerTeamwork: peerTeam,
+              peerLeadership: peerLead,
+              peerProblemSolving: peerProb,
+              peerAvg,
+              solutionId: null,
+              solutionText: null,
+              solutionScore: null,
+            });
+          }
+        }
+
+        return results;
       } catch {
         return [];
       }
