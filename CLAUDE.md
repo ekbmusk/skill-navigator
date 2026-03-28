@@ -143,7 +143,6 @@ shadcn/ui primitives live in `src/components/ui/`. Page-level components are in 
 
 ## Notes
 
-- Project was bootstrapped with [Lovable](https://lovable.dev). Some boilerplate patterns reflect that origin.
-- `recharts` is used for data visualization (progress charts, radar charts in results).
+-`recharts` is used for data visualization (progress charts, radar charts in results).
 - `framer-motion` is used for page transitions and UI animations.
 - Seed data is in `supabase/seed.sql` — used by `supabase db reset`.
