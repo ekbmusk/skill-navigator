@@ -1,73 +1,98 @@
-# Welcome to your Lovable project
+# SkillMap
 
-## Project info
+Platform for diagnosing and developing student skills with analytics for teachers.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- **3 Diagnostics** — General skills, Physics, and InfoComm assessments with weighted scoring, confidence analysis, and anti-cheat detection
+- **Team Simulator** — Collaborative case studies with phased simulation, role assignment, conflict events, and 360° peer feedback
+- **8 Cases** — Business and education-themed scenarios (marketing, management, IT, physics, social, hackathon)
+- **Resource Library** — Filterable collection of articles, videos, exercises, and books linked to skill categories
+- **Teacher Dashboard** — Student analytics, group reports, and diagnostics overview
+- **Student Profile** — Progress charts, test history, and PDF report export
+- **Bilingual UI** — Full Russian and Kazakh localization
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+| Layer | Technologies |
+|-------|-------------|
+| Frontend | React 18, TypeScript, Vite (SWC), TailwindCSS, shadcn/ui |
+| State | React Query, React Context |
+| Backend | Supabase (PostgreSQL, Auth, RLS, Realtime) |
+| Routing | React Router v6 (lazy-loaded pages) |
+| Animation | Framer Motion |
+| Charts | Recharts |
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 18+
+- Docker Desktop
+- Supabase CLI (`brew install supabase/tap/supabase`)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Setup
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+# Clone and install
+git clone https://github.com/ekbmusk/skill-navigator.git
+cd skill-navigator
+npm install
 
-Follow these steps:
+# Start Supabase (requires Docker)
+npx supabase start
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Create .env.local with values from supabase start output
+echo "VITE_SUPABASE_URL=http://127.0.0.1:54321" > .env.local
+echo "VITE_SUPABASE_PUBLISHABLE_KEY=<anon key>" >> .env.local
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app will be available at `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Scripts
 
-**Use GitHub Codespaces**
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run test` | Run tests (Vitest) |
+| `npm run lint` | Lint code |
+| `npx supabase db reset` | Reset database with migrations + seed |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── components/       # Shared UI components
+│   ├── ui/           # shadcn/ui primitives
+│   └── simulator/    # Team simulator components
+├── data/             # Question sets and simulation data
+├── hooks/            # Custom hooks (auth, cases, diagnostics, etc.)
+├── i18n/             # Translations (ru.ts, kz.ts)
+├── integrations/     # Supabase client and types
+├── pages/            # Route pages
+└── utils/            # Scoring engines, PDF export, anti-cheat
+supabase/
+├── migrations/       # Database schema migrations
+└── seed.sql          # Test data
+```
 
-This project is built with:
+## Database
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+PostgreSQL via Supabase with Row Level Security on all tables:
 
-## How can I deploy this project?
+- `profiles` — User profiles
+- `user_roles` — Student/teacher roles
+- `diagnostics_results` — Test scores and answers
+- `cases` — Case studies with phases and conflicts
+- `case_solutions` / `case_messages` — Solutions and chat
+- `simulation_sessions` / `simulation_participants` — Team sessions
+- `simulation_events` / `peer_feedback` — Events and reviews
+- `resources` — Learning materials library
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## License
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+MIT
