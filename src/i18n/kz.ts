@@ -452,6 +452,32 @@ export const kz = {
     overall: "Жалпы",
   },
 
+  teacherActivity: {
+    recentActivity: "Соңғы белсенділік",
+    testCompleted: "Тест аяқталды",
+    trainerCompleted: "Тренажёр өтілді",
+    caseCompleted: "Кейс аяқталды",
+    suspicious: "Күдікті",
+    suspicionScore: "Күдік деңгейі",
+    confidence: "Сенімділік",
+    violations: "Бұзушылықтар",
+    recommendation: "Ұсыныс",
+    overrideFlag: "Жалаушаны алу",
+    invalidate: "Жарамсыз ету",
+    flagOverridden: "Жалауша алынды",
+    invalidated: "Жарамсыз етілді",
+    gradeSolution: "Шешімді бағалау",
+    score: "Балл",
+    save: "Сақтау",
+    noActivity: "Белсенділік жоқ",
+    categoryScores: "Санат бойынша балл",
+    antiCheatDetails: "Тексеру мәліметтері",
+    valid: "Жарамды",
+    warnUser: "Ескерту",
+    flagForReview: "Тексеруге",
+    invalidateRec: "Жарамсыз ету",
+  },
+
   // Category labels
   categories: {
     cognitive: "Когнитивті дағдылар",

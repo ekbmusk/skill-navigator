@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Save, User, Download, Printer, ArrowLeft, TrendingUp, TrendingDown, Minus, Trophy, BarChart3, Target, Brain, Shield, ShieldAlert, Briefcase, Users, Star, LayoutDashboard, ClipboardCheck, Edit3, Award, FlaskConical, Dumbbell as DumbbellIcon, Clock } from "lucide-react";
+import { Camera, Save, User, Download, Printer, ArrowLeft, TrendingUp, TrendingDown, Minus, Trophy, BarChart3, Target, Brain, Shield, ShieldAlert, Briefcase, Users, Star, LayoutDashboard, ClipboardCheck, Edit3, Award, FlaskConical, Dumbbell as DumbbellIcon, Clock, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,7 +25,7 @@ import { infoCommQuestions } from "@/data/infoCommQuestions";
 import { printReport, printBasicReport } from "@/utils/pdfExport";
 import { useTrainers, type TrainerAttempt, type TrainerType } from "@/hooks/useTrainers";
 import { rubricItems } from "@/data/trainers/publicSpeakingData";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import ProgressChart from "@/components/ProgressChart";
 import DashboardOverview from "@/components/profile/DashboardOverview";
 import ProfileEditDialog from "@/components/profile/ProfileEditDialog";
@@ -66,8 +66,13 @@ const ProfilePage = () => {
   const [trainerAttempts, setTrainerAttempts] = useState<TrainerAttempt[]>([]);
   const [selectedTrainer, setSelectedTrainer] = useState<TrainerType | null>(null);
 
-  const { loadProfile: loadTeacherProfile, data: teacherData, loading: teacherLoading, exportGroupCSV } = useTeacherProfile();
+  const { loadProfile: loadTeacherProfile, data: teacherData, loading: teacherLoading, exportGroupCSV, overrideFlag, invalidateResult, scoreSolution } = useTeacherProfile();
   const navigate = useNavigate();
+
+  // Activity stream states (teacher)
+  const [expandedActivity, setExpandedActivity] = useState<string | null>(null);
+  const [gradeInput, setGradeInput] = useState<Record<string, string>>({});
+  const [savingGrade, setSavingGrade] = useState<Record<string, boolean>>({});
 
   // Load test results and case history on component mount
   useEffect(() => {
@@ -343,58 +348,285 @@ const ProfilePage = () => {
             <TabsContent value="activity">
               <Card className="border-border bg-card">
                 <CardHeader>
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 font-[Syne]">
                     <Clock className="h-4 w-4 text-primary" />
-                    {(t as any).teacherProfile?.recentActivity || "Последняя активность"}
+                    {t.teacherActivity.recentActivity}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {!teacherData?.recentActivity?.length ? (
                     <p className="text-sm text-muted-foreground text-center py-8">
-                      {(t as any).teacherProfile?.noActivity || "Нет активности"}
+                      {t.teacherActivity.noActivity}
                     </p>
                   ) : (
-                    <div className="space-y-3">
-                      {teacherData.recentActivity.map((item, i) => (
-                        <motion.div
-                          key={`${item.timestamp}-${i}`}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50"
-                        >
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                            item.type === "test" ? "bg-blue-500/10" :
-                            item.type === "case" ? "bg-green-500/10" : "bg-purple-500/10"
-                          }`}>
-                            {item.type === "test" ? <FlaskConical className="h-4 w-4 text-blue-400" /> :
-                             item.type === "case" ? <Users className="h-4 w-4 text-green-400" /> :
-                             <DumbbellIcon className="h-4 w-4 text-purple-400" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{item.studentName}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {item.detail}
-                              {(item as any).flagged && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium ml-1">
-                                  {isKz ? "Күдікті" : "Подозрительно"}
-                                </span>
-                              )}
+                    <div className="space-y-2">
+                      {teacherData.recentActivity.map((item, i) => {
+                        const itemId = `${item.resultId || item.solutionId || item.timestamp}-${i}`;
+                        const isExpanded = expandedActivity === itemId;
+                        const relTime = (() => {
+                          const diff = Date.now() - new Date(item.timestamp).getTime();
+                          const mins = Math.floor(diff / 60000);
+                          const hours = Math.floor(diff / 3600000);
+                          const days = Math.floor(diff / 86400000);
+                          if (mins < 60) return `${mins} ${isKz ? "мин" : "мин"}`;
+                          if (hours < 24) return `${hours} ${isKz ? "сағ" : "ч"}`;
+                          return `${days} ${isKz ? "күн" : "дн"}`;
+                        })();
+                        const score = item.type === "trainer" && item.trainerMaxScore
+                          ? (item.trainerMaxScore > 0 ? Math.round((item.trainerScore! / item.trainerMaxScore) * 100) : 0)
+                          : item.categoryScores
+                            ? Math.round((item.categoryScores.cognitive + item.categoryScores.soft + item.categoryScores.professional + item.categoryScores.adaptability) / 4)
+                            : 0;
+
+                        return (
+                          <motion.div
+                            key={itemId}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            onClick={() => setExpandedActivity(isExpanded ? null : itemId)}
+                            className="rounded-xl bg-secondary/30 border border-border/50 hover:border-border transition-colors cursor-pointer overflow-hidden"
+                          >
+                            {/* Header row */}
+                            <div className="flex items-center justify-between p-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {item.type === "test" && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-500/15 text-blue-400 shrink-0">
+                                    {t.teacherActivity.testCompleted}
+                                  </span>
+                                )}
+                                {item.type === "trainer" && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-violet-500/15 text-violet-400 shrink-0">
+                                    {t.teacherActivity.trainerCompleted}
+                                  </span>
+                                )}
+                                {item.type === "case" && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-400 shrink-0">
+                                    {t.teacherActivity.caseCompleted}
+                                  </span>
+                                )}
+                                <span className="font-medium text-sm truncate font-[Outfit]">{item.studentName}</span>
+                                <span className="text-xs text-muted-foreground shrink-0">{relTime}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {item.antiCheat && !item.antiCheat.passed && !item.flagOverridden && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-destructive/15 text-destructive flex items-center gap-1">
+                                    <AlertTriangle size={10} /> {t.teacherActivity.suspicious}
+                                  </span>
+                                )}
+                                {item.flagOverridden && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/15 text-teal-400">
+                                    {t.teacherActivity.flagOverridden}
+                                  </span>
+                                )}
+                                {item.invalidated && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-destructive/15 text-destructive line-through">
+                                    {t.teacherActivity.invalidated}
+                                  </span>
+                                )}
+                                {(item.type !== "case" || score > 0) && (
+                                  <span className="font-bold text-sm">{score}%</span>
+                                )}
+                                {isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-[11px] text-muted-foreground shrink-0">
-                            {(() => {
-                              const diff = Date.now() - new Date(item.timestamp).getTime();
-                              const mins = Math.floor(diff / 60000);
-                              const hours = Math.floor(diff / 3600000);
-                              const days = Math.floor(diff / 86400000);
-                              if (mins < 60) return `${mins} ${isKz ? "мин" : "мин"}`;
-                              if (hours < 24) return `${hours} ${isKz ? "сағ" : "ч"}`;
-                              return `${days} ${isKz ? "күн" : "дн"}`;
-                            })()}
-                          </div>
-                        </motion.div>
-                      ))}
+
+                            {/* Expanded content */}
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                                  className="overflow-hidden"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="px-3 pb-3 pt-1 border-t border-border/30 space-y-3">
+                                    {/* TEST expanded details */}
+                                    {item.type === "test" && item.categoryScores && (
+                                      <>
+                                        <div className="space-y-2">
+                                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide font-[Syne]">
+                                            {t.teacherActivity.categoryScores}
+                                          </p>
+                                          {([
+                                            { key: "cognitive", label: t.categories?.cognitive || "Когнитивные", color: "bg-blue-500", value: item.categoryScores.cognitive },
+                                            { key: "soft", label: t.categories?.soft || "Soft Skills", color: "bg-pink-500", value: item.categoryScores.soft },
+                                            { key: "professional", label: t.categories?.professional || "Профессиональные", color: "bg-emerald-500", value: item.categoryScores.professional },
+                                            { key: "adaptability", label: t.categories?.adaptability || "Адаптивность", color: "bg-amber-500", value: item.categoryScores.adaptability },
+                                          ] as const).map(cat => (
+                                            <div key={cat.key} className="space-y-0.5">
+                                              <div className="flex justify-between text-xs">
+                                                <span className="text-muted-foreground">{cat.label}</span>
+                                                <span className="font-medium">{cat.value}%</span>
+                                              </div>
+                                              <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                                                <motion.div
+                                                  className={`h-full rounded-full ${cat.color}`}
+                                                  initial={{ width: 0 }}
+                                                  animate={{ width: `${cat.value}%` }}
+                                                  transition={{ duration: 0.5, delay: 0.1 }}
+                                                />
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+
+                                        {/* Anti-cheat details */}
+                                        {item.antiCheat && !item.antiCheat.passed && (
+                                          <div className="space-y-2 rounded-lg bg-destructive/5 border border-destructive/20 p-3">
+                                            <p className="text-xs font-semibold text-destructive uppercase tracking-wide font-[Syne]">
+                                              {t.teacherActivity.antiCheatDetails}
+                                            </p>
+                                            {/* Suspicion bar */}
+                                            <div className="space-y-0.5">
+                                              <div className="flex justify-between text-xs">
+                                                <span className="text-muted-foreground">{t.teacherActivity.suspicionScore}</span>
+                                                <span className="font-medium text-destructive">{Math.round(item.antiCheat.suspicionScore * 100)}%</span>
+                                              </div>
+                                              <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                                                <motion.div
+                                                  className="h-full rounded-full bg-gradient-to-r from-red-400 to-red-600"
+                                                  initial={{ width: 0 }}
+                                                  animate={{ width: `${item.antiCheat.suspicionScore * 100}%` }}
+                                                  transition={{ duration: 0.5, delay: 0.15 }}
+                                                />
+                                              </div>
+                                            </div>
+                                            {/* Confidence */}
+                                            <div className="flex items-center gap-2 text-xs">
+                                              <span className="text-muted-foreground">{t.teacherActivity.confidence}:</span>
+                                              <span className="font-medium">{Math.round((1 - item.antiCheat.confidencePenalty) * 100)}%</span>
+                                            </div>
+                                            {/* Violations */}
+                                            {item.antiCheat.violations.length > 0 && (
+                                              <div className="space-y-1">
+                                                <span className="text-xs text-muted-foreground">{t.teacherActivity.violations}:</span>
+                                                <div className="flex flex-wrap gap-1">
+                                                  {item.antiCheat.violations.map((v, vi) => {
+                                                    const sevColor = v.severity === "critical" ? "bg-red-500/15 text-red-400"
+                                                      : v.severity === "high" ? "bg-orange-500/15 text-orange-400"
+                                                      : v.severity === "medium" ? "bg-yellow-500/15 text-yellow-400"
+                                                      : "bg-gray-500/15 text-gray-400";
+                                                    return (
+                                                      <span key={vi} className={`px-2 py-0.5 rounded text-[10px] font-medium ${sevColor}`}>
+                                                        {v.message}
+                                                      </span>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {/* Recommendation */}
+                                            <div className="text-xs">
+                                              <span className="text-muted-foreground">{t.teacherActivity.recommendation}: </span>
+                                              <span className="font-medium">
+                                                {item.antiCheat.recommendation === "valid" ? t.teacherActivity.valid
+                                                  : item.antiCheat.recommendation === "warn" ? t.teacherActivity.warnUser
+                                                  : item.antiCheat.recommendation === "flag" ? t.teacherActivity.flagForReview
+                                                  : t.teacherActivity.invalidateRec}
+                                              </span>
+                                            </div>
+                                            {/* Action buttons */}
+                                            {item.resultId && !item.flagOverridden && !item.invalidated && (
+                                              <div className="flex gap-2 pt-1">
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="text-xs border-teal-500/50 text-teal-400 hover:bg-teal-500/10 h-7"
+                                                  onClick={async () => {
+                                                    const ok = await overrideFlag(item.resultId!);
+                                                    toast({ title: ok ? (isKz ? "Жалауша алынды" : "Флаг снят") : "Error" });
+                                                  }}
+                                                >
+                                                  {t.teacherActivity.overrideFlag}
+                                                </Button>
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  className="text-xs border-destructive/50 text-destructive hover:bg-destructive/10 h-7"
+                                                  onClick={async () => {
+                                                    const ok = await invalidateResult(item.resultId!);
+                                                    toast({ title: ok ? (isKz ? "Жарамсыз етілді" : "Аннулирован") : "Error" });
+                                                  }}
+                                                >
+                                                  {t.teacherActivity.invalidate}
+                                                </Button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* TRAINER expanded details */}
+                                    {item.type === "trainer" && item.trainerScore != null && item.trainerMaxScore != null && (
+                                      <div className="space-y-1">
+                                        <div className="flex justify-between text-xs">
+                                          <span className="text-muted-foreground">{t.teacherActivity.score}</span>
+                                          <span className="font-medium">{item.trainerScore}/{item.trainerMaxScore}</span>
+                                        </div>
+                                        <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                                          <motion.div
+                                            className="h-full rounded-full bg-violet-500"
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${item.trainerMaxScore > 0 ? (item.trainerScore / item.trainerMaxScore) * 100 : 0}%` }}
+                                            transition={{ duration: 0.5, delay: 0.1 }}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* CASE expanded details */}
+                                    {item.type === "case" && (
+                                      <div className="space-y-2">
+                                        {item.solutionText && (
+                                          <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+                                            {item.solutionText}
+                                          </p>
+                                        )}
+                                        {item.solutionId && (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground">{t.teacherActivity.gradeSolution}:</span>
+                                            <Input
+                                              type="number"
+                                              min={0}
+                                              max={100}
+                                              placeholder="0-100"
+                                              className="h-7 w-20 text-xs"
+                                              value={gradeInput[item.solutionId] ?? ""}
+                                              onChange={(e) => setGradeInput(prev => ({ ...prev, [item.solutionId!]: e.target.value }))}
+                                              onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <Button
+                                              size="sm"
+                                              className="h-7 text-xs px-3"
+                                              disabled={savingGrade[item.solutionId] || !gradeInput[item.solutionId]}
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                const sid = item.solutionId!;
+                                                const val = parseInt(gradeInput[sid], 10);
+                                                if (isNaN(val) || val < 0 || val > 100) return;
+                                                setSavingGrade(prev => ({ ...prev, [sid]: true }));
+                                                const ok = await scoreSolution(sid, val);
+                                                setSavingGrade(prev => ({ ...prev, [sid]: false }));
+                                                toast({ title: ok ? (isKz ? "Сақталды" : "Сохранено") : "Error" });
+                                              }}
+                                            >
+                                              {savingGrade[item.solutionId] ? "..." : t.teacherActivity.save}
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

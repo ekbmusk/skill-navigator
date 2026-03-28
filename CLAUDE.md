@@ -22,8 +22,10 @@ npm run test              # Run tests once
 npm run test:watch        # Watch mode
 npx vitest run src/path/to/file.test.ts  # Run a single test file
 
-# Lint
+# Lint & Format
 npm run lint
+npm run format            # Prettier format all src files
+npm run format:check      # Check formatting without writing
 
 # Supabase management
 npx supabase stop         # Stop local Supabase
@@ -47,34 +49,47 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<anon key from `supabase start` output>
 
 **Path alias:** `@/` → `src/`
 
+**Typography:** Syne (display, weight 600-800) + Outfit (body, weight 300-500). Defined as CSS variables `--font-display` and `--font-body` in `src/index.css`.
+
+**Color system:** Warm gold primary (`hsl(42, 88%, 56%)`), deep teal accent (`hsl(175, 60%, 42%)`). Dark mode = warm charcoal, light mode = warm sand/ivory. All via CSS custom properties.
+
 ### Routing (`src/App.tsx`)
 
 All pages except Index are lazy-loaded with `React.lazy` + `Suspense`.
 
 ```
-/                      → Index (public landing)
-/auth                  → AuthPage (login/signup, email + Google OAuth)
-/diagnostics           → DiagnosticsPage (protected) — general skills
-/diagnostics/physics   → PhysicsDiagnosticsPage (protected)
-/diagnostics/infocomm  → InfoCommDiagnosticsPage (protected)
-/dashboard             → TeacherDashboard (protected, teacher role only)
-/cases                 → CasesListPage (protected)
-/case/:id              → CasePage (protected)
-/resources             → ResourcesPage (protected)
-/profile               → ProfilePage (protected)
+/                             → Index (public landing)
+/auth                         → AuthPage (login/signup, email + Google OAuth)
+/tests                        → TestsListPage (protected) — hub for all 3 diagnostics
+/diagnostics                  → DiagnosticsPage (protected) — general skills
+/diagnostics/physics          → PhysicsDiagnosticsPage (protected)
+/diagnostics/infocomm         → InfoCommDiagnosticsPage (protected)
+/trainers                     → TrainersListPage (protected) — hub for skill trainers
+/trainers/sbi-feedback        → SbiFeedbackTrainer (protected)
+/trainers/conflict-resolution → ConflictResolutionTrainer (protected)
+/trainers/public-speaking     → PublicSpeakingTrainer (protected)
+/dashboard                    → TeacherDashboard (protected, teacher role only)
+/cases                        → CasesListPage (protected)
+/case/:id                     → CasePage (protected)
+/resources                    → ResourcesPage (protected)
+/profile                      → ProfilePage (protected)
 ```
 
 `ProtectedRoute` wraps authenticated routes and optionally accepts `requiredRole` for role-based access.
 
 ### Provider Hierarchy
 
-`QueryClientProvider` → `LanguageProvider` → `TooltipProvider` → `BrowserRouter` → `AuthProvider` → `Routes`
+`QueryClientProvider` → `ThemeProvider` → `LanguageProvider` → `TooltipProvider` → `BrowserRouter` → `AuthProvider` → `Routes`
 
 Note: `react`, `react-dom`, and `@tanstack/react-query` are deduped in `vite.config.ts` to prevent duplicate instance issues.
 
 ### Auth & State (`src/hooks/useAuth.tsx`)
 
 `AuthContext` provides `user`, `session`, `role`, `profile`, `loading`, `signOut()`. Role and profile are fetched from Supabase on session change. New users get a "student" role assigned automatically via a database trigger.
+
+### Theme (`src/hooks/useTheme.tsx`)
+
+`ThemeProvider` provides `theme` (dark|light), `setTheme()`, `toggleTheme()`. Persisted to localStorage. Applies `dark`/`light` class to `<html>`. Light mode uses warm sand/ivory palette; dark mode uses warm charcoal. CSS overrides for light mode glassmorphism patterns are in `src/index.css`.
 
 ### Supabase (`src/integrations/supabase/`)
 
@@ -96,12 +111,13 @@ Note: `react`, `react-dom`, and `@tanstack/react-query` are deduped in `vite.con
 - `simulation_events` — conflict events triggered during simulation phases
 - `peer_feedback` — 360° peer reviews (communication, teamwork, leadership, problem_solving scores 1–5)
 
-**Resources table:**
-- `resources` — learning materials library (articles, videos, exercises, books) categorized by skill area, with bilingual title/description
+**Resources & Trainers:**
+- `resources` — learning materials library (articles, videos, exercises, books) categorized by skill area
+- `trainer_attempts` — trainer exercise results (trainer_type, score, max_score, level, answers jsonb)
 
-RLS is enabled on all tables. Helper function `has_role()` is used in policies for teacher access.
+RLS is enabled on all tables. Helper function `has_role()` is used in policies for teacher access. Note: `user_roles` RLS restricts students to see only their own role — use profiles.group_name for group member queries instead.
 
-**Note:** `types.ts` may lag behind the actual schema — the simulation tables (simulation_sessions, simulation_participants, simulation_events, peer_feedback) and newer cases columns (phases, conflicts, roles) are defined in migrations but may not yet be reflected in the generated types. Run the type generation command above after applying migrations.
+**Note:** `types.ts` may lag behind the actual schema. Run the type generation command above after applying migrations.
 
 ### i18n (`src/i18n/`)
 
@@ -109,7 +125,7 @@ RLS is enabled on all tables. Helper function `has_role()` is used in policies f
 
 ### Diagnostics
 
-There are three independent diagnostics, each with its own question set, scoring engine, and results component:
+Three independent diagnostics, each with its own question set, scoring engine, and results component:
 
 | Diagnostic | Questions | Scoring | Results |
 |---|---|---|---|
@@ -117,11 +133,26 @@ There are three independent diagnostics, each with its own question set, scoring
 | Physics | `src/data/physicsQuestions.ts` | `src/utils/physicsScoringEngine.ts` | `PhysicsDiagnosticsResults.tsx` |
 | InfoComm | `src/data/infoCommQuestions.ts` | `src/utils/infoCommScoringEngine.ts` | `InfoCommResults.tsx` |
 
-Common patterns across all diagnostics:
+Common patterns:
 - Questions have weights (1.0–2.0) and some are reverse-scored
-- Scoring computes weighted category scores, confidence, and skill profile classification
-- `src/utils/antiCheatDetection.ts` checks for straight-lining, pattern responses, and fast timing
+- Shared utilities in `src/utils/scoringHelpers.ts` (getSkillLevel, variance, average, calculateRawConfidenceWithDiversity)
+- `src/utils/antiCheatDetection.ts` checks for straight-lining, pattern responses, fast timing — stores report in answers JSONB as `_anti_cheat`
+- `src/utils/liveAntiCheat.ts` runs lightweight checks during test-taking (shows toast warnings)
 - Results saved via `src/hooks/useDiagnostics.ts` → `diagnostics_results` table
+
+### Skill Trainers
+
+Three interactive trainers for soft skills practice:
+
+| Trainer | Data | Page |
+|---|---|---|
+| SBI Feedback | `src/data/trainers/sbiFeedbackData.ts` | `src/pages/trainers/SbiFeedbackTrainer.tsx` |
+| Conflict Resolution | `src/data/trainers/conflictDialogData.ts` | `src/pages/trainers/ConflictResolutionTrainer.tsx` |
+| Public Speaking | `src/data/trainers/publicSpeakingData.ts` | `src/pages/trainers/PublicSpeakingTrainer.tsx` |
+
+- `src/hooks/useTrainers.ts` — saveAttempt, loadAttempts, loadBestScores
+- `src/components/trainers/TrainerLayout.tsx` — shared wrapper with progress bar, step counter, restart
+- Results saved to `trainer_attempts` table
 
 ### Cases & Team Simulator
 
@@ -129,13 +160,24 @@ Cases are collaborative problem-solving exercises with phased simulation:
 - `src/hooks/useCases.ts` — case data fetching and solution submission
 - `src/hooks/useSimulator.ts` — simulation session management (lobby, phases, events)
 - `src/data/simulationData.ts` — simulation phase/conflict definitions
-- `src/components/simulator/` — simulator UI components
+- `src/components/simulator/` — PhaseManager, RoleAssignment, ConflictModal, PeerFeedback
+- `src/components/case/` — CaseLobby, CaseSimulation, CaseSolution, CaseFeedback, CaseResults (split from CasePage)
 
 Each case has 4 timed phases with tasks, and random conflict events that the team must resolve collaboratively.
 
 ### UI Components
 
-shadcn/ui primitives live in `src/components/ui/`. Page-level components are in `src/pages/`. Shared layout components (Navbar, ProtectedRoute, etc.) are in `src/components/`.
+- shadcn/ui primitives: `src/components/ui/`
+- Custom branded icons: `src/components/BrandIcons.tsx` — HexIcon, DiamondIcon, OrbitalIcon, BlobIcon, LayeredIcon (gradient containers with hover animations, used throughout the app instead of plain icon wrappers)
+- Profile sub-components: `src/components/profile/` — DashboardOverview, GroupTab, AchievementBadges, SkillRadarChart, ProfileEditDialog
+- Page components: `src/pages/`
+- Shared layout: `src/components/` — Navbar (glassmorphism + scroll detection), HeroSection, Footer, etc.
+
+### Group Features
+
+- `src/hooks/useGroupMembers.ts` — loads all students in same group_name with latest scores
+- `src/hooks/useGroupRank.ts` — calculates student's rank within group (position, total, percentile)
+- GroupTab in profile shows leaderboard + "You vs Group Average" radar chart
 
 ### PDF Export
 
@@ -143,6 +185,7 @@ shadcn/ui primitives live in `src/components/ui/`. Page-level components are in 
 
 ## Notes
 
--`recharts` is used for data visualization (progress charts, radar charts in results).
+- `recharts` is used for data visualization (progress charts, radar charts in results).
 - `framer-motion` is used for page transitions and UI animations.
-- Seed data is in `supabase/seed.sql` — used by `supabase db reset`.
+- Seed data is in `supabase/seed.sql` — includes 6 mock students in group CS-101 with varied diagnostics, trainer attempts, and case solutions. Used by `supabase db reset`.
+- Prettier config in `.prettierrc` — 120 char width, double quotes, es5 trailing commas.

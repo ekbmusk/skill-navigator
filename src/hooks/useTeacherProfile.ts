@@ -7,6 +7,21 @@ export interface RecentActivity {
   detail: string;
   timestamp: string;
   flagged?: boolean;
+  resultId: string | null;
+  categoryScores: { cognitive: number; soft: number; professional: number; adaptability: number } | null;
+  antiCheat: {
+    passed: boolean;
+    suspicionScore: number;
+    confidencePenalty: number;
+    recommendation: string;
+    violations: { type: string; severity: string; message: string }[];
+  } | null;
+  flagOverridden: boolean;
+  invalidated: boolean;
+  trainerScore: number | null;
+  trainerMaxScore: number | null;
+  solutionText: string | null;
+  solutionId: string | null;
 }
 
 export interface TeacherProfileData {
@@ -74,7 +89,7 @@ export const useTeacherProfile = () => {
       // 5. Parallel queries
       const [diagRes, caseRes, trainerRes, caseSolRes] = await Promise.all([
         supabase.from("diagnostics_results")
-          .select("user_id, average_score, completed_at, answers")
+          .select("id, user_id, average_score, cognitive_score, soft_score, professional_score, adaptability_score, completed_at, answers")
           .in("user_id", studentIds)
           .order("completed_at", { ascending: false }),
         supabase.from("simulation_participants")
@@ -86,7 +101,7 @@ export const useTeacherProfile = () => {
           .in("user_id", studentIds)
           .order("completed_at", { ascending: false }),
         supabase.from("case_solutions")
-          .select("user_id, score, submitted_at, case_id")
+          .select("id, user_id, score, submitted_at, case_id, solution_text")
           .in("user_id", studentIds)
           .order("submitted_at", { ascending: false }),
       ]);
@@ -129,18 +144,47 @@ export const useTeacherProfile = () => {
           detail: `${typeLabel} — ${r.average_score}%`,
           timestamp: r.completed_at,
           flagged: (r.answers as any)?._cheating_flag === true,
+          resultId: r.id,
+          categoryScores: {
+            cognitive: r.cognitive_score,
+            soft: r.soft_score,
+            professional: r.professional_score,
+            adaptability: r.adaptability_score,
+          },
+          antiCheat: (r.answers as any)?._anti_cheat || null,
+          flagOverridden: (r.answers as any)?._flag_overridden === true,
+          invalidated: (r.answers as any)?._invalidated === true,
+          trainerScore: null,
+          trainerMaxScore: null,
+          solutionText: null,
+          solutionId: null,
         });
       }
 
       // Recent case completions (top 3)
+      // Build a lookup for the latest case solution per user
+      const caseSolByUser = new Map<string, any>();
+      for (const s of caseSolData) {
+        if (!caseSolByUser.has(s.user_id)) caseSolByUser.set(s.user_id, s);
+      }
       for (const r of caseData.slice(0, 3)) {
         const session = (r as any).simulation_sessions;
         if (session?.completed_at) {
+          const sol = caseSolByUser.get(r.user_id);
           activity.push({
             type: "case",
             studentName: nameMap.get(r.user_id) || "Student",
             detail: "Кейс симуляция",
             timestamp: session.completed_at,
+            resultId: null,
+            categoryScores: null,
+            antiCheat: null,
+            flagOverridden: false,
+            invalidated: false,
+            trainerScore: null,
+            trainerMaxScore: null,
+            solutionText: sol?.solution_text || null,
+            solutionId: sol?.id || null,
           });
         }
       }
@@ -154,6 +198,15 @@ export const useTeacherProfile = () => {
           studentName: nameMap.get(r.user_id) || "Student",
           detail: `${typeLabel} — ${pct}%`,
           timestamp: r.completed_at,
+          resultId: null,
+          categoryScores: null,
+          antiCheat: null,
+          flagOverridden: false,
+          invalidated: false,
+          trainerScore: r.score,
+          trainerMaxScore: r.max_score,
+          solutionText: null,
+          solutionId: null,
         });
       }
 
@@ -316,5 +369,100 @@ export const useTeacherProfile = () => {
     link.click();
   }, [data]);
 
-  return { loadProfile, data, loading, exportGroupCSV };
+  const overrideFlag = async (resultId: string): Promise<boolean> => {
+    try {
+      const { data: row } = await supabase
+        .from("diagnostics_results")
+        .select("answers")
+        .eq("id", resultId)
+        .single();
+      if (!row) return false;
+      const updated = { ...(row.answers as any), _flag_overridden: true };
+      const { error } = await supabase
+        .from("diagnostics_results")
+        .update({ answers: updated })
+        .eq("id", resultId);
+      if (error) return false;
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          recentActivity: prev.recentActivity.map(a =>
+            a.resultId === resultId ? { ...a, flagOverridden: true } : a
+          ),
+        };
+      });
+      return true;
+    } catch { return false; }
+  };
+
+  const invalidateResult = async (resultId: string): Promise<boolean> => {
+    try {
+      const { data: row } = await supabase
+        .from("diagnostics_results")
+        .select("answers")
+        .eq("id", resultId)
+        .single();
+      if (!row) return false;
+      const updated = { ...(row.answers as any), _invalidated: true };
+      const { error } = await supabase
+        .from("diagnostics_results")
+        .update({ answers: updated })
+        .eq("id", resultId);
+      if (error) return false;
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          recentActivity: prev.recentActivity.map(a =>
+            a.resultId === resultId ? { ...a, invalidated: true } : a
+          ),
+        };
+      });
+      return true;
+    } catch { return false; }
+  };
+
+  const updateResultScore = async (
+    resultId: string,
+    scores: { cognitive: number; soft: number; professional: number; adaptability: number }
+  ): Promise<boolean> => {
+    try {
+      const avg = Math.round((scores.cognitive + scores.soft + scores.professional + scores.adaptability) / 4);
+      const { error } = await supabase
+        .from("diagnostics_results")
+        .update({
+          cognitive_score: scores.cognitive,
+          soft_score: scores.soft,
+          professional_score: scores.professional,
+          adaptability_score: scores.adaptability,
+          average_score: avg,
+        })
+        .eq("id", resultId);
+      return !error;
+    } catch { return false; }
+  };
+
+  const scoreSolution = async (solutionId: string, score: number): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("case_solutions")
+        .update({ score } as any)
+        .eq("id", solutionId);
+      if (error) return false;
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          recentActivity: prev.recentActivity.map(a =>
+            a.solutionId === solutionId ? { ...a, detail: `Кейс — ${score}%` } : a
+          ),
+          ungradedSolutions: Math.max(0, prev.ungradedSolutions - 1),
+        };
+      });
+      return true;
+    } catch { return false; }
+  };
+
+  return { loadProfile, data, loading, exportGroupCSV, overrideFlag, invalidateResult, updateResultScore, scoreSolution };
 };

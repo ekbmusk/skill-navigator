@@ -433,6 +433,32 @@ export const ru = {
     overall: "Общий",
   },
 
+  teacherActivity: {
+    recentActivity: "Последняя активность",
+    testCompleted: "Тест завершён",
+    trainerCompleted: "Тренажёр пройден",
+    caseCompleted: "Кейс завершён",
+    suspicious: "Подозрительно",
+    suspicionScore: "Уровень подозрения",
+    confidence: "Достоверность",
+    violations: "Нарушения",
+    recommendation: "Рекомендация",
+    overrideFlag: "Снять флаг",
+    invalidate: "Аннулировать",
+    flagOverridden: "Флаг снят",
+    invalidated: "Аннулирован",
+    gradeSolution: "Оценить решение",
+    score: "Балл",
+    save: "Сохранить",
+    noActivity: "Нет активности",
+    categoryScores: "Баллы по категориям",
+    antiCheatDetails: "Детали проверки",
+    valid: "Валидный",
+    warnUser: "Предупреждение",
+    flagForReview: "На проверку",
+    invalidateRec: "Аннулировать",
+  },
+
   // Category labels
   categories: {
     cognitive: "Когнитивные навыки",
