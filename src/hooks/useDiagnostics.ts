@@ -219,9 +219,9 @@ export const useDiagnostics = () => {
                 ? "Ақпараттық-коммуникативтік"
                 : "Жалпы дағдылар";
 
-        // Escape CSV value (wrap in quotes if contains comma or quote)
+        const sep = ";";
         const esc = (v: string) => {
-            if (v.includes(",") || v.includes('"') || v.includes("\n")) {
+            if (v.includes(sep) || v.includes('"') || v.includes("\n")) {
                 return `"${v.replace(/"/g, '""')}"`;
             }
             return v;
@@ -233,7 +233,7 @@ export const useDiagnostics = () => {
             `Тест түрі: ${testLabel}`,
             `Уақыты: ${timestamp}`,
             "",
-            "Категория,Балл",
+            `Категория${sep}Балл`,
         ];
 
         // Map DB scores to category labels
@@ -252,15 +252,15 @@ export const useDiagnostics = () => {
             ];
 
         for (const [label, score] of scoreMapping) {
-            summaryRows.push(`${esc(label)},${score}`);
+            summaryRows.push(`${esc(label)}${sep}${score}`);
         }
-        summaryRows.push(`Жалпы балл,${result.average_score}`);
+        summaryRows.push(`Жалпы балл${sep}${result.average_score}`);
 
         // Section 2: Question-by-question breakdown
         const detailRows = [
             "",
             "",
-            "№,Категория,Сұрақ,Таңдалған жауап,Балл,Макс балл,Ең жақсы жауап",
+            `№${sep}Категория${sep}Сұрақ${sep}Таңдалған жауап${sep}Балл${sep}Макс балл${sep}Ең жақсы жауап`,
         ];
 
         for (const q of questionSet) {
@@ -279,7 +279,7 @@ export const useDiagnostics = () => {
                 : `Балл ${maxScore}`;
 
             detailRows.push(
-                `${q.id},${esc(catLabel)},${esc((q as any).textKz || q.text)},${esc(chosenLabel)},${chosenScore},${maxScore},${esc(bestLabel)}`
+                `${q.id}${sep}${esc(catLabel)}${sep}${esc((q as any).textKz || q.text)}${sep}${esc(chosenLabel)}${sep}${chosenScore}${sep}${maxScore}${sep}${esc(bestLabel)}`
             );
         }
 
@@ -291,7 +291,7 @@ export const useDiagnostics = () => {
      */
     const downloadAsCSV = (result: Tables<"diagnostics_results">, userName: string = "User") => {
         const csv = generateCSV(result, userName);
-        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        const blob = new Blob(["\uFEFF" + "sep=;\n" + csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
 

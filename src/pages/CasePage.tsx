@@ -1,27 +1,28 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import {
-  Send, Users2, Clock, Trophy, Lightbulb, CheckCircle2,
-  MessageCircle, FileText, Target, ChevronLeft, Play,
-  Crown, BarChart3, Palette, Mic, Shield, Award,
+  Users2, ChevronLeft, FileText, Target,
+  Crown, BarChart3, Palette, Mic,
 } from "lucide-react";
 import { useLang } from "@/i18n/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useCases, type Case } from "@/hooks/useCases";
 import { useSimulator } from "@/hooks/useSimulator";
 import { useToast } from "@/hooks/use-toast";
-import RoleAssignment from "@/components/simulator/RoleAssignment";
-import PhaseManager from "@/components/simulator/PhaseManager";
 import ConflictModal from "@/components/simulator/ConflictModal";
-import PeerFeedback from "@/components/simulator/PeerFeedback";
+import CaseLobby from "@/components/case/CaseLobby";
+import CaseSimulation from "@/components/case/CaseSimulation";
+import CaseSolution from "@/components/case/CaseSolution";
+import CaseFeedback from "@/components/case/CaseFeedback";
+import CaseResults from "@/components/case/CaseResults";
+import { ROLE_DEFINITIONS } from "@/data/simulationData";
 import type {
   SimPhase, ConflictEvent, Participant, SimulationSession,
   SimRole, PeerFeedbackData, FeedbackSummary,
 } from "@/data/simulationData";
-import { ROLE_DEFINITIONS } from "@/data/simulationData";
 
 // ── Color maps ────────────────────────────────────────────────
 const difficultyColorMap: Record<string, string> = {
@@ -270,7 +271,6 @@ const CasePage = () => {
     if (!user) return;
     setConflictVotes((prev) => {
       const next = { ...prev };
-      // Remove from other options
       for (const key of Object.keys(next)) {
         next[Number(key)] = (next[Number(key)] || []).filter(
           (uid) => uid !== user.id
@@ -347,6 +347,8 @@ const CasePage = () => {
     creative: <Palette size={12} />,
     presenter: <Mic size={12} />,
   };
+
+  const currentUserName = profile?.full_name || user?.email || "";
 
   // ── Loading state ───────────────────────────────────────────
   if (stage === "loading") {
@@ -545,277 +547,76 @@ const CasePage = () => {
 
         {/* ── Main Content ─────────────────────────────────── */}
         <main className="flex-1 flex flex-col min-h-0">
-          {/* ─── LOBBY: No session yet ──── */}
-          {stage === "lobby" && !session && (
-            <div className="flex-1 flex items-center justify-center p-8">
-              <div className="text-center space-y-6 max-w-md">
-                <div className="w-20 h-20 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <Play size={32} className="text-primary" />
-                </div>
-                <h2 className="font-display text-2xl font-bold">
-                  {isKz ? "Командалық симуляция" : "Командная симуляция"}
-                </h2>
-                <p className="text-muted-foreground">
-                  {isKz
-                    ? "Кезеңдік симуляцияны бастаңыз: рөлдер таңдау → тапсырмаларды орындау → қақтығыстарды шешу → нәтижелерді бағалау"
-                    : "Начните пошаговую симуляцию: выбор ролей → выполнение задач → разрешение конфликтов → оценка результатов"}
-                </p>
-                <div className="flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary">
-                    <Crown size={14} className="text-yellow-500" />
-                    {isKz ? "Рөлдер бөлу" : "Распределение ролей"}
-                  </span>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary">
-                    <Clock size={14} className="text-blue-500" />
-                    {phases.length} {isKz ? "кезең" : "этапов"}
-                  </span>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary">
-                    <Shield size={14} className="text-red-500" />
-                    {conflicts.length} {isKz ? "қақтығыс" : "конфликтов"}
-                  </span>
-                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary">
-                    <Award size={14} className="text-green-500" />
-                    360° {isKz ? "бағалау" : "оценка"}
-                  </span>
-                </div>
-                <Button size="lg" className="gap-2" onClick={handleCreateSession}>
-                  <Play size={18} />
-                  {isKz ? "Сессия құру" : "Создать сессию"}
-                </Button>
-              </div>
-            </div>
+          {stage === "lobby" && (
+            <CaseLobby
+              session={session}
+              participants={participants}
+              phases={phases}
+              conflicts={conflicts}
+              currentUserId={user?.id || ""}
+              isCreator={isCreator}
+              isKz={isKz}
+              lang={lang}
+              onCreateSession={handleCreateSession}
+              onAssignRole={handleAssignRole}
+              onStartSimulation={handleStartSimulation}
+            />
           )}
 
-          {/* ─── LOBBY: Role Assignment ──── */}
-          {stage === "lobby" && session && (
-            <div className="flex-1 overflow-y-auto p-6">
-              <RoleAssignment
-                participants={participants}
-                currentUserId={user?.id || ""}
-                lang={lang}
-                onAssignRole={handleAssignRole}
-                onStart={handleStartSimulation}
-                isCreator={isCreator}
-              />
-            </div>
+          {stage === "simulation" && session && (
+            <CaseSimulation
+              session={session}
+              participants={participants}
+              phases={phases}
+              messages={messages}
+              input={input}
+              sending={sending}
+              activeTab={activeTab}
+              isLeader={isLeader}
+              isKz={isKz}
+              lang={lang}
+              completedTasks={completedTasks}
+              currentUserId={user?.id || ""}
+              currentUserName={currentUserName}
+              chatEndRef={chatEndRef}
+              onSetInput={setInput}
+              onSetActiveTab={setActiveTab}
+              onSendMessage={handleSendMessage}
+              onAdvancePhase={handleAdvancePhase}
+              onTimeUp={handleTimeUp}
+              onToggleTask={handleToggleTask}
+            />
           )}
 
-          {/* ─── SIMULATION: Phases + Chat ──── */}
-          {stage === "simulation" && (
-            <>
-              {/* Tabs */}
-              <div className="border-b border-border px-4 flex gap-1">
-                <button
-                  onClick={() => setActiveTab("chat")}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                    activeTab === "chat"
-                      ? "border-primary text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <MessageCircle size={16} /> {isKz ? "Талқылау" : "Обсуждение"}
-                </button>
-                <button
-                  onClick={() => setActiveTab("solution")}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                    activeTab === "solution"
-                      ? "border-primary text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Lightbulb size={16} /> {isKz ? "Кезең" : "Этап"}
-                </button>
-              </div>
-
-              {activeTab === "chat" ? (
-                <>
-                  {/* Chat messages */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    <AnimatePresence initial={false}>
-                      {messages.map((msg) => {
-                        const own = msg.user_id === user?.id;
-                        const authorName = own
-                          ? profile?.full_name || user?.email || ""
-                          : msg.author_name || "";
-                        const avatar = getAuthorInitial(authorName);
-                        const time = new Date(msg.created_at).toLocaleTimeString("ru", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                        const participant = participants.find(
-                          (p) => p.user_id === msg.user_id
-                        );
-                        const roleLabel =
-                          participant?.role && participant.role !== "member"
-                            ? isKz
-                              ? ROLE_DEFINITIONS[participant.role as SimRole]?.labelKz
-                              : ROLE_DEFINITIONS[participant.role as SimRole]?.label
-                            : null;
-
-                        return (
-                          <motion.div
-                            key={msg.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex gap-3"
-                          >
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 ${
-                                own
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-secondary"
-                              }`}
-                            >
-                              {avatar}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-baseline gap-2 mb-1">
-                                <span className="text-sm font-medium">
-                                  {authorName}
-                                </span>
-                                {roleLabel && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                                    {roleLabel}
-                                  </span>
-                                )}
-                                <span className="text-xs text-muted-foreground">
-                                  {time}
-                                </span>
-                              </div>
-                              <div
-                                className={`inline-block max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                                  own
-                                    ? "bg-primary text-primary-foreground rounded-tl-sm"
-                                    : "bg-secondary rounded-tl-sm"
-                                }`}
-                              >
-                                {msg.message}
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </AnimatePresence>
-                    <div ref={chatEndRef} />
-                  </div>
-
-                  {/* Chat input */}
-                  <div className="border-t border-border p-4">
-                    <div className="flex gap-2">
-                      <input
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) =>
-                          e.key === "Enter" && !e.shiftKey && handleSendMessage()
-                        }
-                        placeholder={
-                          isKz ? "Хабарлама жазыңыз..." : "Напишите сообщение..."
-                        }
-                        className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <Button
-                        onClick={handleSendMessage}
-                        size="icon"
-                        className="h-[46px] w-[46px] rounded-xl shrink-0"
-                        disabled={sending}
-                      >
-                        <Send size={18} />
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 overflow-y-auto p-6">
-                  <PhaseManager
-                    phases={phases}
-                    currentPhase={session?.current_phase || 0}
-                    phaseStartedAt={session?.phase_started_at || null}
-                    lang={lang}
-                    onAdvancePhase={handleAdvancePhase}
-                    onTimeUp={handleTimeUp}
-                    isLeader={isLeader}
-                    completedTasks={completedTasks}
-                    onToggleTask={handleToggleTask}
-                  />
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ─── SOLUTION: After simulation ──── */}
           {stage === "solution" && (
-            <div className="flex-1 flex flex-col p-6">
-              <div className="mb-6 text-center">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-                  <Trophy size={16} />
-                  {isKz ? "Симуляция аяқталды!" : "Симуляция завершена!"}
-                </div>
-                <h2 className="font-display text-2xl font-bold">
-                  {isKz ? "Команда шешімін жазыңыз" : "Напишите решение команды"}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {isKz
-                    ? "Симуляция барысында қабылданған барлық шешімдер мен стратегияны жинақтаңыз"
-                    : "Обобщите все решения и стратегию, принятые в ходе симуляции"}
-                </p>
-              </div>
-              <textarea
-                value={solution}
-                onChange={(e) => setSolution(e.target.value)}
-                placeholder={
-                  isKz
-                    ? "1. Негізгі стратегия...\n\n2. Қабылданған шешімдер...\n\n3. Күтілетін нәтижелер..."
-                    : "1. Основная стратегия...\n\n2. Принятые решения...\n\n3. Ожидаемые результаты..."
-                }
-                className="flex-1 bg-secondary/50 border border-border rounded-xl p-5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary resize-none leading-relaxed"
-              />
-              <div className="flex justify-end mt-4">
-                <Button
-                  className="gap-2"
-                  onClick={handleSubmitSolution}
-                  disabled={!solution.trim()}
-                >
-                  <CheckCircle2 size={16} />
-                  {isKz ? "Шешімді жіберу" : "Отправить решение"}
-                </Button>
-              </div>
-            </div>
+            <CaseSolution
+              solution={solution}
+              isKz={isKz}
+              onSetSolution={setSolution}
+              onSubmitSolution={handleSubmitSolution}
+            />
           )}
 
-          {/* ─── FEEDBACK: 360° ──── */}
           {stage === "feedback" && (
-            <div className="flex-1 overflow-y-auto p-6">
-              <PeerFeedback
-                participants={participants}
-                currentUserId={user?.id || ""}
-                lang={lang}
-                onSubmit={handleSubmitFeedback}
-                summaries={feedbackSummaries}
-                submitted={feedbackSubmitted}
-              />
-            </div>
+            <CaseFeedback
+              participants={participants}
+              currentUserId={user?.id || ""}
+              lang={lang}
+              feedbackSummaries={feedbackSummaries}
+              feedbackSubmitted={feedbackSubmitted}
+              onSubmitFeedback={handleSubmitFeedback}
+            />
           )}
 
-          {/* ─── RESULTS ──── */}
           {stage === "results" && (
-            <div className="flex-1 overflow-y-auto p-6">
-              <PeerFeedback
-                participants={participants}
-                currentUserId={user?.id || ""}
-                lang={lang}
-                onSubmit={handleSubmitFeedback}
-                summaries={feedbackSummaries}
-                submitted={true}
-              />
-              <div className="text-center mt-8">
-                <Link to="/cases">
-                  <Button variant="outline" className="gap-2">
-                    <ChevronLeft size={16} />
-                    {isKz ? "Кейстерге оралу" : "Вернуться к кейсам"}
-                  </Button>
-                </Link>
-              </div>
-            </div>
+            <CaseResults
+              participants={participants}
+              currentUserId={user?.id || ""}
+              lang={lang}
+              isKz={isKz}
+              feedbackSummaries={feedbackSummaries}
+              onSubmitFeedback={handleSubmitFeedback}
+            />
           )}
         </main>
       </div>

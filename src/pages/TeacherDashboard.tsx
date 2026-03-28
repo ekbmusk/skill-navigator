@@ -495,18 +495,18 @@ const TeacherDashboard = () => {
             ) : (
               <>
                 {/* Charts */}
-                <div className="grid lg:grid-cols-2 gap-6 mb-10">
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-6 rounded-2xl bg-card border border-border/50 shadow-card">
+                <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 mb-10">
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-3 sm:p-6 rounded-2xl bg-card border border-border/50 shadow-card">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-[hsl(175,60%,42%)] font-medium mb-1">{isKz ? "Аналитика" : "Аналитика"}</p>
                     <h3 className="font-display font-semibold tracking-[-0.03em] mb-5">{t.dashboard.avgDynamics}</h3>
-                    <div className="h-[240px]">
+                    <div className="h-[240px] min-h-[200px] overflow-hidden">
                       {progressData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={progressData}>
                             <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(42, 88%, 56%)" stopOpacity={0.25} /><stop offset="100%" stopColor="hsl(42, 88%, 56%)" stopOpacity={0} /></linearGradient></defs>
                             <CartesianGrid stroke="hsl(222, 25%, 18%)" strokeDasharray="3 3" />
-                            <XAxis dataKey="month" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 12 }} />
-                            <YAxis domain={[0, 100]} tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 12 }} />
+                            <XAxis dataKey="month" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} />
+                            <YAxis domain={[0, 100]} tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} width={30} />
                             <Tooltip contentStyle={{ background: "hsl(222, 40%, 10%)", border: "1px solid hsl(222, 25%, 18%)", borderRadius: 12, fontSize: 12 }} labelStyle={{ color: "hsl(210, 20%, 92%)" }} itemStyle={{ color: "hsl(42, 88%, 56%)" }} />
                             <Area type="monotone" dataKey="avg" stroke="hsl(42, 88%, 56%)" fill="url(#areaGrad)" strokeWidth={2} />
                           </AreaChart>
@@ -517,14 +517,14 @@ const TeacherDashboard = () => {
                     </div>
                   </motion.div>
 
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="p-6 rounded-2xl bg-card border border-border/50 shadow-card">
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="p-3 sm:p-6 rounded-2xl bg-card border border-border/50 shadow-card">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-[hsl(175,60%,42%)] font-medium mb-1">{isKz ? "Профиль" : "Профиль"}</p>
                     <h3 className="font-display font-semibold tracking-[-0.03em] mb-5">{t.dashboard.groupProfile}</h3>
-                    <div className="h-[240px]">
+                    <div className="h-[240px] min-h-[200px] overflow-hidden">
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart data={groupAvg.map(g => ({ subject: g.skill, score: g.score, fullMark: 100 }))}>
                           <PolarGrid stroke="hsl(222, 25%, 18%)" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 11 }} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} />
                           <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} />
                           <Radar dataKey="score" stroke="hsl(175, 60%, 42%)" fill="hsl(175, 60%, 42%)" fillOpacity={0.15} strokeWidth={2} />
                         </RadarChart>
@@ -534,15 +534,15 @@ const TeacherDashboard = () => {
                 </div>
 
                 {/* Distribution Chart */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="p-6 rounded-2xl bg-card border border-border/50 shadow-card mb-10">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="p-3 sm:p-6 rounded-2xl bg-card border border-border/50 shadow-card mb-10">
                   <p className="text-[10px] uppercase tracking-[0.15em] text-[hsl(175,60%,42%)] font-medium mb-1">{isKz ? "Таралу" : "Распределение"}</p>
                   <h3 className="font-display font-semibold tracking-[-0.03em] mb-5">{t.dashboard.distribution}</h3>
-                  <div className="h-[200px]">
+                  <div className="h-[200px] min-h-[200px] overflow-hidden">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={distributionData}>
                         <CartesianGrid stroke="hsl(222, 25%, 18%)" strokeDasharray="3 3" />
-                        <XAxis dataKey="range" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 12 }} />
-                        <YAxis tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 12 }} />
+                        <XAxis dataKey="range" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} />
+                        <YAxis tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} width={30} />
                         <Tooltip contentStyle={{ background: "hsl(222, 40%, 10%)", border: "1px solid hsl(222, 25%, 18%)", borderRadius: 12, fontSize: 12 }} labelStyle={{ color: "hsl(210, 20%, 92%)" }} itemStyle={{ color: "hsl(42, 88%, 56%)" }} />
                         <Bar dataKey="count" fill="hsl(42, 88%, 56%)" radius={[8, 8, 0, 0]} />
                       </BarChart>
@@ -614,7 +614,7 @@ const TeacherDashboard = () => {
 
                 {/* Student Card Grid */}
                 <motion.div
-                  className="grid md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
                   initial="hidden"
                   animate="visible"
                 >
@@ -808,7 +808,7 @@ const TeacherDashboard = () => {
 
                 {/* Cases Student Card Grid */}
                 <motion.div
-                  className="grid md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
                   initial="hidden"
                   animate="visible"
                 >
@@ -963,7 +963,7 @@ const TeacherDashboard = () => {
                 {selectedStudent && (
                   <div className="p-4 rounded-xl bg-secondary/10 border border-border/40">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-[hsl(175,60%,42%)] font-medium mb-2">{isKz ? "Профиль" : "Профиль"}</p>
-                    <div className="h-[220px]">
+                    <div className="h-[220px] min-h-[200px] overflow-hidden">
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart data={[
                           { subject: t.dashboard.cognitive, score: selectedStudent.cognitive, fullMark: 100 },

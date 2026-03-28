@@ -154,14 +154,14 @@ const DiagnosticsResults = ({ results, fullResult, onRestart }: Props) => {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="bg-card-gradient border border-border rounded-2xl p-6 shadow-card mb-8"
+        className="bg-card-gradient border border-border rounded-2xl p-3 sm:p-6 shadow-card mb-8"
       >
-        <div className="h-[320px]">
+        <div className="h-[280px] sm:h-[320px] min-h-[200px] overflow-hidden">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={chartData}>
               <PolarGrid stroke="hsl(222, 25%, 18%)" />
-              <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 12 }} />
-              <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }} />
+              <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 9 }} />
               <Radar name={t.results.skills} dataKey="score" stroke="hsl(38, 92%, 55%)" fill="hsl(38, 92%, 55%)" fillOpacity={0.2} strokeWidth={2} />
             </RadarChart>
           </ResponsiveContainer>
@@ -291,14 +291,14 @@ const DiagnosticsResults = ({ results, fullResult, onRestart }: Props) => {
       )}
 
       {/* Actions */}
-      <div className="flex justify-center gap-4">
-        <Button variant="outline" onClick={onRestart} className="gap-2">
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
+        <Button variant="outline" onClick={onRestart} className="gap-2 text-xs sm:text-sm">
           <RotateCcw size={16} /> {t.results.restart}
         </Button>
-        <Button onClick={handleDownload} disabled={loadingHistory} className="gap-2">
+        <Button onClick={handleDownload} disabled={loadingHistory} className="gap-2 text-xs sm:text-sm">
           <Download size={16} /> {t.results.download}
         </Button>
-        <Button variant="outline" onClick={handlePrintPDF} className="gap-2">
+        <Button variant="outline" onClick={handlePrintPDF} className="gap-2 text-xs sm:text-sm">
           <Printer size={16} /> {t.results.downloadPDF}
         </Button>
       </div>

@@ -49,19 +49,20 @@ const ProgressChart = ({ results }: ProgressChartProps) => {
   }));
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[300px] w-full min-h-[200px] overflow-hidden">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+        <LineChart data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
           <CartesianGrid stroke="hsl(222, 25%, 18%)" strokeDasharray="3 3" />
           <XAxis
             dataKey="date"
-            tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 11 }}
+            tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }}
             tickLine={false}
           />
           <YAxis
             domain={[0, 100]}
-            tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 11 }}
+            tick={{ fill: "hsl(215, 15%, 55%)", fontSize: 10 }}
             tickLine={false}
+            width={30}
           />
           <Tooltip
             contentStyle={{
@@ -73,9 +74,9 @@ const ProgressChart = ({ results }: ProgressChartProps) => {
             labelStyle={{ color: "hsl(210, 20%, 92%)" }}
           />
           <Legend
-            wrapperStyle={{ fontSize: 11 }}
+            wrapperStyle={{ fontSize: 10 }}
             iconType="circle"
-            iconSize={8}
+            iconSize={6}
           />
           <Line
             type="monotone"

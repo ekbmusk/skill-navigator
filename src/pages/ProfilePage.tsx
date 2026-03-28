@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Save, User, Download, Printer, ArrowLeft, TrendingUp, TrendingDown, Minus, Trophy, BarChart3, Target, Brain, Shield, ShieldAlert, Briefcase, Users, Star } from "lucide-react";
+import { Camera, Save, User, Download, Printer, ArrowLeft, TrendingUp, TrendingDown, Minus, Trophy, BarChart3, Target, Brain, Shield, ShieldAlert, Briefcase, Users, Star, LayoutDashboard, ClipboardCheck, Edit3, Award, FlaskConical, Dumbbell as DumbbellIcon, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,6 +29,10 @@ import { motion } from "framer-motion";
 import ProgressChart from "@/components/ProgressChart";
 import DashboardOverview from "@/components/profile/DashboardOverview";
 import ProfileEditDialog from "@/components/profile/ProfileEditDialog";
+import { useTeacherProfile } from "@/hooks/useTeacherProfile";
+import { computeTeacherBadges } from "@/hooks/useTeacherBadges";
+import AchievementBadges from "@/components/profile/AchievementBadges";
+import { useNavigate } from "react-router-dom";
 
 const ProfilePage = () => {
   const { user, profile, role } = useAuth();
@@ -60,12 +64,18 @@ const ProfilePage = () => {
   const [trainerAttempts, setTrainerAttempts] = useState<TrainerAttempt[]>([]);
   const [selectedTrainer, setSelectedTrainer] = useState<TrainerType | null>(null);
 
+  const { loadProfile: loadTeacherProfile, data: teacherData, loading: teacherLoading, exportGroupCSV } = useTeacherProfile();
+  const navigate = useNavigate();
+
   // Load test results and case history on component mount
   useEffect(() => {
     if (role === "student") {
       loadTestResults();
       loadCaseHistory().then(setCaseHistory);
       loadAttempts().then(setTrainerAttempts);
+    }
+    if (role === "teacher") {
+      loadTeacherProfile();
     }
   }, [role]);
 
@@ -189,28 +199,177 @@ const ProfilePage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container max-w-4xl pt-24 pb-12">
+      <div className="container max-w-4xl pt-24 pb-12 px-3 sm:px-4">
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className={`grid w-full ${role === "student" ? "grid-cols-5" : "grid-cols-1"} mb-6`}>
+          <TabsList className={`grid w-full ${role === "student" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-5" : "grid-cols-2"} mb-6 h-auto`}>
             <TabsTrigger value="profile">{t.profile.title}</TabsTrigger>
             {role === "student" && <TabsTrigger value="progress">{t.progress.title}</TabsTrigger>}
             {role === "student" && <TabsTrigger value="tests">{t.profile.tests}</TabsTrigger>}
             {role === "student" && <TabsTrigger value="trainers">{t.nav.trainers}</TabsTrigger>}
             {role === "student" && <TabsTrigger value="cases">{t.profileCases?.tab || "Кейсы"}</TabsTrigger>}
+            {role === "teacher" && <TabsTrigger value="activity">{(t as any).teacherProfile?.activity || "Активность"}</TabsTrigger>}
           </TabsList>
 
           {/* Profile Tab */}
           <TabsContent value="profile">
-            <DashboardOverview
-              user={user}
-              profile={profile}
-              testResults={testResults}
-              caseHistory={caseHistory}
-              trainerAttempts={trainerAttempts}
-              lang={lang}
-              onEditProfile={() => setEditDialogOpen(true)}
-            />
+            {role === "teacher" ? (
+              <div className="space-y-6">
+                {/* Row 1: Avatar + Name + Edit */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
+                  <Avatar className="h-20 w-20 border-3 border-primary/30 shadow-lg shadow-primary/10">
+                    {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} /> : null}
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-display font-bold">
+                      {profile?.full_name?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-display font-bold">{profile?.full_name || user?.email}</h2>
+                    <p className="text-sm text-muted-foreground">{profile?.group_name || ""}</p>
+                  </div>
+                  <Button variant="outline" onClick={() => setEditDialogOpen(true)} className="gap-2">
+                    <Edit3 className="h-4 w-4" /> {isKz ? "Өзгерту" : "Изменить"}
+                  </Button>
+                </motion.div>
+
+                {/* Row 2: Quick Actions */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate("/dashboard")}>
+                      <LayoutDashboard className="h-5 w-5 text-primary" />
+                      <span className="text-xs">{(t as any).teacherProfile?.goToDashboard || "Дашборд"}</span>
+                    </Button>
+                    <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => navigate("/dashboard")}>
+                      <ClipboardCheck className="h-5 w-5 text-green-400" />
+                      <span className="text-xs">{(t as any).teacherProfile?.scoreSolutions || "Оценить"}</span>
+                    </Button>
+                    <Button variant="outline" className="h-auto py-4 flex flex-col gap-2" onClick={() => { exportGroupCSV(); toast({ title: (t as any).teacherProfile?.exported || "Экспортировано" }); }}>
+                      <Download className="h-5 w-5 text-blue-400" />
+                      <span className="text-xs">{(t as any).teacherProfile?.exportResults || "Экспорт"}</span>
+                    </Button>
+                  </div>
+                </motion.div>
+
+                {/* Row 3: Group Stats */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                  <Card className="border-border bg-card">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base font-semibold flex items-center gap-2">
+                        <Users className="h-4 w-4 text-primary" />
+                        {(t as any).teacherProfile?.groupOverview || "Обзор группы"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                        <div>
+                          <div className="text-3xl font-display font-bold text-foreground">{teacherData?.studentCount || 0}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{(t as any).teacherProfile?.students || "Студентов"}</div>
+                        </div>
+                        <div>
+                          <div className="text-3xl font-display font-bold text-primary">{teacherData?.avgScore || 0}%</div>
+                          <div className="text-xs text-muted-foreground mt-1">{(t as any).teacherProfile?.avgScore || "Средний балл"}</div>
+                        </div>
+                        <div>
+                          <div className="text-3xl font-display font-bold text-yellow-400">{teacherData?.ungradedSolutions || 0}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{(t as any).teacherProfile?.ungraded || "Не оценено"}</div>
+                        </div>
+                      </div>
+                      {teacherData?.topStudent && (
+                        <div className="mt-4 pt-3 border-t border-border text-center">
+                          <div className="text-xs text-muted-foreground">{(t as any).teacherProfile?.topStudent || "Лучший студент"}</div>
+                          <div className="text-sm font-semibold mt-0.5">{teacherData.topStudent.name} — {teacherData.topStudent.score}%</div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Row 4: Teaching Badges */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                  <Card className="border-border bg-card">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base font-semibold flex items-center gap-2">
+                        <Award className="h-4 w-4 text-primary" />
+                        {(t as any).teacherProfile?.achievements || "Достижения"}
+                        <span className="text-sm text-muted-foreground font-normal ml-1">
+                          {computeTeacherBadges(teacherData).filter(b => b.unlocked).length}/{computeTeacherBadges(teacherData).length}
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <AchievementBadges badges={computeTeacherBadges(teacherData)} lang={lang} />
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </div>
+            ) : (
+              <DashboardOverview
+                user={user}
+                profile={profile}
+                testResults={testResults}
+                caseHistory={caseHistory}
+                trainerAttempts={trainerAttempts}
+                lang={lang}
+                onEditProfile={() => setEditDialogOpen(true)}
+              />
+            )}
           </TabsContent>
+
+          {/* Activity Tab (Teacher) */}
+          {role === "teacher" && (
+            <TabsContent value="activity">
+              <Card className="border-border bg-card">
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    {(t as any).teacherProfile?.recentActivity || "Последняя активность"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!teacherData?.recentActivity?.length ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      {(t as any).teacherProfile?.noActivity || "Нет активности"}
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {teacherData.recentActivity.map((item, i) => (
+                        <motion.div
+                          key={`${item.timestamp}-${i}`}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50"
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            item.type === "test" ? "bg-blue-500/10" :
+                            item.type === "case" ? "bg-green-500/10" : "bg-purple-500/10"
+                          }`}>
+                            {item.type === "test" ? <FlaskConical className="h-4 w-4 text-blue-400" /> :
+                             item.type === "case" ? <Users className="h-4 w-4 text-green-400" /> :
+                             <DumbbellIcon className="h-4 w-4 text-purple-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{item.studentName}</div>
+                            <div className="text-xs text-muted-foreground">{item.detail}</div>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground shrink-0">
+                            {(() => {
+                              const diff = Date.now() - new Date(item.timestamp).getTime();
+                              const mins = Math.floor(diff / 60000);
+                              const hours = Math.floor(diff / 3600000);
+                              const days = Math.floor(diff / 86400000);
+                              if (mins < 60) return `${mins} ${isKz ? "мин" : "мин"}`;
+                              if (hours < 24) return `${hours} ${isKz ? "сағ" : "ч"}`;
+                              return `${days} ${isKz ? "күн" : "дн"}`;
+                            })()}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* Progress Tab */}
           {role === "student" && (
