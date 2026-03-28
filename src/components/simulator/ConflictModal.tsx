@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Vote, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DiamondIcon } from "@/components/BrandIcons";
 import type { ConflictEvent, ConflictOption } from "@/data/simulationData";
 
 interface ConflictModalProps {
@@ -75,9 +76,9 @@ const ConflictModal = ({
       >
         {/* Header */}
         <div className="bg-destructive/10 px-6 py-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
-            <AlertTriangle size={20} className="text-destructive" />
-          </div>
+          <DiamondIcon size={44} gradient="from-red-500 to-orange-500">
+            <AlertTriangle size={20} className="text-white" />
+          </DiamondIcon>
           <div>
             <h3 className="font-display font-bold text-lg">
               {isKz ? conflict.titleKz : conflict.title}

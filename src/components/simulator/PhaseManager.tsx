@@ -6,6 +6,7 @@ import {
   CheckCircle2, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HexIcon } from "@/components/BrandIcons";
 import type { SimPhase } from "@/data/simulationData";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -121,9 +122,9 @@ const PhaseManager = ({
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-              {ICON_MAP[phase.icon] || <Target size={20} />}
-            </div>
+            <HexIcon size={44} gradient="from-primary to-violet-500" animate={false}>
+              <span className="text-white">{ICON_MAP[phase.icon] || <Target size={20} />}</span>
+            </HexIcon>
             <div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider">
                 {isKz ? "Кезең" : "Этап"} {currentPhase + 1}/{phases.length}

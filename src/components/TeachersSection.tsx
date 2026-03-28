@@ -4,10 +4,10 @@ import { useLang } from "@/i18n/LanguageContext";
 import { OrbitalIcon, HexIcon, DiamondIcon, BlobIcon } from "@/components/BrandIcons";
 
 const featureColors = [
-  { bg: "bg-blue-500/15", glow: "shadow-blue-500/20", text: "text-blue-400", bar: "bg-blue-500", barW: "w-3/4" },
-  { bg: "bg-emerald-500/15", glow: "shadow-emerald-500/20", text: "text-emerald-400", bar: "bg-emerald-500", barW: "w-4/5" },
-  { bg: "bg-violet-500/15", glow: "shadow-violet-500/20", text: "text-violet-400", bar: "bg-violet-500", barW: "w-2/3" },
-  { bg: "bg-amber-500/15", glow: "shadow-amber-500/20", text: "text-amber-400", bar: "bg-amber-500", barW: "w-1/2" },
+  { bar: "bg-blue-500", barW: "w-3/4" },
+  { bar: "bg-emerald-500", barW: "w-4/5" },
+  { bar: "bg-violet-500", barW: "w-2/3" },
+  { bar: "bg-amber-500", barW: "w-1/2" },
 ];
 
 const springTransition = (i: number) => ({
@@ -28,9 +28,9 @@ const TeachersSection = () => {
   ];
 
   return (
-    <section id="teachers" className="py-24 md:py-32 relative overflow-hidden">
-      {/* Background gradient blob */}
+    <section id="teachers" className="py-24 md:py-32 relative overflow-hidden section-alt">
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
+      <div className="absolute inset-0 bg-noise pointer-events-none" />
       <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-violet-500/5 blur-[100px] pointer-events-none" />
 
@@ -43,13 +43,13 @@ const TeachersSection = () => {
             viewport={{ once: true }}
             transition={{ type: "spring", stiffness: 200, damping: 24 }}
           >
-            <span className="text-primary text-sm font-medium uppercase tracking-wider">{t.teachersSection.label}</span>
-            <h2 className="font-display text-3xl md:text-5xl font-bold mt-3">
+            <span className="text-gradient text-xl md:text-2xl font-bold uppercase tracking-widest">{t.teachersSection.label}</span>
+            <h2 className="font-display text-2xl md:text-3xl font-bold mt-3">
               {t.teachersSection.title} <span className="text-gradient">{t.teachersSection.titleHighlight}</span>
             </h2>
             <p className="mt-4 text-muted-foreground leading-relaxed">{t.teachersSection.subtitle}</p>
 
-            {/* Decorative dashboard mockup */}
+            {/* Dashboard mockup */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -59,7 +59,6 @@ const TeachersSection = () => {
             >
               <div className="rounded-2xl p-[1px] bg-gradient-to-br from-primary/60 via-violet-500/40 to-emerald-500/30">
                 <div className="rounded-2xl bg-card/95 backdrop-blur-sm p-5 space-y-4">
-                  {/* Mock header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-500/80" />
@@ -69,7 +68,6 @@ const TeachersSection = () => {
                     <div className="text-xs text-muted-foreground font-mono">dashboard.tsx</div>
                   </div>
 
-                  {/* Mock stat row */}
                   <div className="grid grid-cols-3 gap-3">
                     {[
                       { label: "Students", value: "247", color: "text-blue-400" },
@@ -83,7 +81,6 @@ const TeachersSection = () => {
                     ))}
                   </div>
 
-                  {/* Mock bar chart */}
                   <div className="flex items-end gap-2 h-20 px-2">
                     {[45, 68, 82, 55, 73, 90, 60, 78].map((h, i) => (
                       <motion.div
@@ -118,37 +115,15 @@ const TeachersSection = () => {
                   whileHover={{ x: -4 }}
                   className="flex gap-4 p-5 rounded-xl bg-card-gradient border border-border hover:border-primary/30 transition-all duration-300 shadow-card hover:shadow-lg group"
                 >
-                  {/* Number badge + branded icon */}
-                  <div className="relative shrink-0">
-                    <div className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-primary text-[10px] font-bold text-primary-foreground flex items-center justify-center z-10">
-                      {i + 1}
-                    </div>
-                    {i === 0 && (
-                      <OrbitalIcon gradient="from-blue-500 to-cyan-500" glow="bg-blue-500" size={48}>
-                        <TrendingUp className="text-white" size={20} />
-                      </OrbitalIcon>
-                    )}
-                    {i === 1 && (
-                      <HexIcon gradient="from-emerald-500 to-teal-500" glow="bg-emerald-500" size={48}>
-                        <Users className="text-white" size={20} />
-                      </HexIcon>
-                    )}
-                    {i === 2 && (
-                      <DiamondIcon gradient="from-violet-500 to-purple-500" glow="bg-violet-500" size={48}>
-                        <FileText className="text-white" size={20} />
-                      </DiamondIcon>
-                    )}
-                    {i === 3 && (
-                      <BlobIcon gradient="from-amber-500 to-orange-500" glow="bg-amber-500" size={48}>
-                        <Bell className="text-white" size={20} />
-                      </BlobIcon>
-                    )}
+                  <div className="shrink-0">
+                    {i === 0 && <OrbitalIcon gradient="from-blue-500 to-cyan-500" glow="bg-blue-500" size={48}><TrendingUp className="text-white" size={20} /></OrbitalIcon>}
+                    {i === 1 && <HexIcon gradient="from-emerald-500 to-teal-500" glow="bg-emerald-500" size={48}><Users className="text-white" size={20} /></HexIcon>}
+                    {i === 2 && <DiamondIcon gradient="from-violet-500 to-purple-500" glow="bg-violet-500" size={48}><FileText className="text-white" size={20} /></DiamondIcon>}
+                    {i === 3 && <BlobIcon gradient="from-amber-500 to-orange-500" glow="bg-amber-500" size={48}><Bell className="text-white" size={20} /></BlobIcon>}
                   </div>
-
                   <div className="flex-1 min-w-0">
                     <h3 className="font-display font-semibold mb-1">{item.title}</h3>
                     <p className="text-sm text-muted-foreground mb-2">{item.desc}</p>
-                    {/* Subtle progress indicator */}
                     <div className="h-1 rounded-full bg-secondary/60 overflow-hidden">
                       <motion.div
                         className={`h-full rounded-full ${color.bar} opacity-60`}

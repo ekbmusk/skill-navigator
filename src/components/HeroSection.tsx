@@ -41,8 +41,8 @@ const AnimatedCounter = ({ target, label, icon: Icon }: { target: number; label:
   return (
     <motion.div
       ref={ref}
-      className="relative flex flex-col items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl px-6 py-6"
-      whileHover={{ y: -4, borderColor: "rgba(255,255,255,0.15)" }}
+      className="relative flex flex-col items-center gap-2 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-xl px-6 py-6 shadow-card"
+      whileHover={{ y: -4 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       <Icon className="text-primary/60" size={18} />
@@ -63,34 +63,36 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-      {/* Dark gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[hsl(222,47%,8%)] via-background to-background" />
+      {/* Background — adapts to theme */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background" />
+      {/* Noise texture for depth in light mode */}
+      <div className="absolute inset-0 bg-noise pointer-events-none" />
 
-      {/* Animated grid overlay */}
+      {/* Animated grid overlay — subtle in both modes */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-40"
+        className="absolute inset-0 pointer-events-none opacity-30 dark:opacity-40"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(124,58,237,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,0.07) 1px, transparent 1px)",
+            "linear-gradient(hsl(var(--primary) / 0.08) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary) / 0.08) 1px, transparent 1px)",
           backgroundSize: "80px 80px",
-          maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 60%)",
-          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 60%)",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 50%)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 50%)",
         }}
       />
 
-      {/* Large gradient orbs */}
+      {/* Large gradient orbs — stronger in light mode */}
       <motion.div
-        className="absolute top-[15%] left-[5%] w-[500px] h-[500px] rounded-full bg-gradient-to-br from-primary/8 to-violet-500/5 blur-[120px]"
+        className="absolute top-[15%] left-[5%] w-[500px] h-[500px] rounded-full bg-gradient-to-br from-primary/10 dark:from-primary/8 to-violet-500/10 dark:to-violet-500/5 blur-[120px]"
         animate={{ y: [0, -40, 0], x: [0, 20, 0] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-[10%] right-[5%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-cyan-500/5 to-primary/5 blur-[120px]"
+        className="absolute bottom-[10%] right-[5%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-cyan-500/10 dark:from-cyan-500/5 to-primary/10 dark:to-primary/5 blur-[120px]"
         animate={{ y: [0, 30, 0], x: [0, -30, 0] }}
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute top-[40%] left-[40%] w-[400px] h-[400px] rounded-full bg-violet-500/5 blur-[100px]"
+        className="absolute top-[40%] left-[40%] w-[400px] h-[400px] rounded-full bg-violet-500/10 dark:bg-violet-500/5 blur-[100px]"
         animate={{ scale: [1, 1.15, 1] }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />

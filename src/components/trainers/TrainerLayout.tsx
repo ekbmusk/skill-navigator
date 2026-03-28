@@ -9,7 +9,8 @@ interface TrainerLayoutProps {
   title: string;
   subtitle?: string;
   icon?: ReactNode;
-  accentColor?: string; // tailwind color class like "blue" | "red" | "violet"
+  /** @deprecated No longer used — icon is rendered directly */
+  accentColor?: string;
   children: ReactNode;
   progress?: number;
   score?: number | null;
@@ -21,7 +22,7 @@ interface TrainerLayoutProps {
 }
 
 const TrainerLayout = ({
-  title, subtitle, icon, accentColor = "primary",
+  title, subtitle, icon,
   children, progress, score, maxScore, step, totalSteps,
   onRestart, restartLabel,
 }: TrainerLayoutProps) => {
@@ -44,11 +45,7 @@ const TrainerLayout = ({
         {/* Header with icon */}
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center gap-4 mb-3">
-            {icon && (
-              <div className={`w-12 h-12 rounded-xl bg-${accentColor}-500/10 flex items-center justify-center shrink-0`}>
-                {icon}
-              </div>
-            )}
+            {icon && icon}
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold">{title}</h1>
               {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}

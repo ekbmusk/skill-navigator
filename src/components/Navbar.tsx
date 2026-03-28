@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, LogOut, User, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, User, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useLang, Lang } from "@/i18n/LanguageContext";
+import { useTheme } from "@/hooks/useTheme";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
@@ -41,6 +42,7 @@ const Navbar = () => {
   };
 
   const toggleLang = () => setLang(lang === "ru" ? "kz" : "ru");
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <>
@@ -50,7 +52,7 @@ const Navbar = () => {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
-            ? "bg-background/60 backdrop-blur-2xl border-b border-white/[0.06] shadow-lg shadow-black/10"
+            ? "bg-background/70 backdrop-blur-2xl border-b border-border/50 shadow-lg shadow-black/5 dark:shadow-black/10"
             : "bg-transparent backdrop-blur-none border-b border-transparent"
         }`}
       >
@@ -99,6 +101,24 @@ const Navbar = () => {
               className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-all duration-200"
             >
               {lang === "ru" ? "KZ" : "RU"}
+            </button>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-muted-foreground hover:text-foreground transition-all duration-200"
+            >
+              <AnimatePresence mode="wait">
+                {theme === "dark" ? (
+                  <motion.div key="sun" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                    <Sun size={15} />
+                  </motion.div>
+                ) : (
+                  <motion.div key="moon" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                    <Moon size={15} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </button>
 
             {/* User section */}
@@ -221,13 +241,21 @@ const Navbar = () => {
 
             {/* Mobile footer */}
             <div className="p-4 border-t border-white/[0.06] space-y-3">
-              <button
-                onClick={toggleLang}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-muted-foreground"
-              >
-                <span>{lang === "ru" ? "Қазақша" : "Русский"}</span>
-                <span className="text-xs font-bold uppercase text-primary">{lang === "ru" ? "KZ" : "RU"}</span>
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={toggleLang}
+                  className="flex-1 flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-muted-foreground"
+                >
+                  <span>{lang === "ru" ? "Қазақша" : "Русский"}</span>
+                  <span className="text-xs font-bold uppercase text-primary">{lang === "ru" ? "KZ" : "RU"}</span>
+                </button>
+                <button
+                  onClick={toggleTheme}
+                  className="px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.06] text-muted-foreground"
+                >
+                  {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+              </div>
               {user ? (
                 <div className="space-y-2">
                   <Link

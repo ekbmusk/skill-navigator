@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Eye, MessageSquare, AlertCircle, Sparkles } from "lucide-react";
+import { CheckCircle2, Eye, MessageSquare, AlertCircle } from "lucide-react";
+import { OrbitalIcon, HexIcon } from "@/components/BrandIcons";
 import { Button } from "@/components/ui/button";
 import { useLang } from "@/i18n/LanguageContext";
 import { useTrainers } from "@/hooks/useTrainers";
@@ -98,15 +99,14 @@ const SbiFeedbackTrainer = () => {
           {/* Big score */}
           <div className="relative inline-block mb-6">
             <motion.div
-              className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mx-auto"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", delay: 0.2 }}
+              className="mx-auto"
             >
-              <div>
-                <Sparkles size={16} className="text-primary mx-auto mb-1" />
-                <span className="text-4xl font-display font-bold text-gradient">{avgScore}%</span>
-              </div>
+              <OrbitalIcon size={96} gradient="from-blue-500 to-cyan-500" glow="bg-blue-500">
+                <span className="text-3xl font-display font-bold text-white">{avgScore}%</span>
+              </OrbitalIcon>
             </motion.div>
           </div>
 
@@ -163,9 +163,9 @@ const SbiFeedbackTrainer = () => {
           {/* Scenario card */}
           <div className="relative p-5 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/20 mb-6">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                <AlertCircle size={16} className="text-blue-400" />
-              </div>
+              <HexIcon size={36} gradient="from-blue-500 to-cyan-500" className="shrink-0 mt-0.5">
+                <AlertCircle size={16} className="text-white" />
+              </HexIcon>
               <p className="text-sm leading-relaxed">{isKz ? scenario.situationKz : scenario.situation}</p>
             </div>
           </div>

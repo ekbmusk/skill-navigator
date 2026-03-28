@@ -5,6 +5,7 @@ import {
   RotateCcw, TrendingUp, TrendingDown, Shield, ShieldAlert,
   Brain, Target, MessageSquare, BookOpen, Eye, Award,
 } from "lucide-react";
+import { HexIcon } from "@/components/BrandIcons";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer,
 } from "recharts";
@@ -30,11 +31,11 @@ interface Props {
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  motivational: <Award size={18} />,
-  cognitive_info: <Brain size={18} />,
-  activity: <Target size={18} />,
-  reflective: <Eye size={18} />,
-  outcome: <BookOpen size={18} />,
+  motivational: <Award size={18} className="text-white" />,
+  cognitive_info: <Brain size={18} className="text-white" />,
+  activity: <Target size={18} className="text-white" />,
+  reflective: <Eye size={18} className="text-white" />,
+  outcome: <BookOpen size={18} className="text-white" />,
 };
 
 const InfoCommResults = ({ results, fullResult, lang, onRestart }: Props) => {
@@ -223,9 +224,9 @@ const InfoCommResults = ({ results, fullResult, lang, onRestart }: Props) => {
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    {CATEGORY_ICONS[r.category] || <Target size={18} />}
-                  </div>
+                  <HexIcon size={40} gradient="from-primary to-violet-500" animate={false}>
+                    {CATEGORY_ICONS[r.category] || <Target size={18} className="text-white" />}
+                  </HexIcon>
                   <div>
                     <h3 className="font-semibold text-sm">{r.label}</h3>
                     {catResult && (

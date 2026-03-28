@@ -10,9 +10,9 @@ import {
   BookMarked,
   Layers,
   SearchX,
-  FolderOpen,
   Sparkles,
 } from "lucide-react";
+import { OrbitalIcon } from "@/components/BrandIcons";
 import { useLang } from "@/i18n/LanguageContext";
 import { useResources, type Resource } from "@/hooks/useResources";
 import ResourceCard from "@/components/ResourceCard";
@@ -228,13 +228,9 @@ const ResourcesPage = () => {
               className="flex flex-col items-center justify-center py-24 text-center"
             >
               <div className="relative mb-6">
-                <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl scale-150" />
-                <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-secondary to-secondary/60 border border-border/50 flex items-center justify-center">
-                  <SearchX size={32} className="text-muted-foreground/60" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-purple-500/20 border border-border/50 flex items-center justify-center">
-                  <FolderOpen size={14} className="text-muted-foreground/50" />
-                </div>
+                <OrbitalIcon size={72} gradient="from-muted-foreground/20 to-muted-foreground/10">
+                  <SearchX size={32} className="text-white" />
+                </OrbitalIcon>
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">
                 {t.resources?.empty || (isKz ? "Ресурстар табылмады" : "Ресурсы не найдены")}

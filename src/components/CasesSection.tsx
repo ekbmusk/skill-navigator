@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Users2, Lightbulb, Trophy, ArrowRight, Loader2, Inbox } from "lucide-react";
+import { BlobIcon } from "@/components/BrandIcons";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useLang } from "@/i18n/LanguageContext";
@@ -79,8 +80,9 @@ const CasesSection = () => {
   };
 
   return (
-    <section id="cases" className="py-24 md:py-32">
-      <div className="container px-4">
+    <section id="cases" className="py-24 md:py-32 section-alt relative">
+      <div className="absolute inset-0 bg-noise pointer-events-none" />
+      <div className="container px-4 relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -105,9 +107,9 @@ const CasesSection = () => {
         {/* Empty state */}
         {!loading && cases.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-secondary/60 flex items-center justify-center">
+            <BlobIcon size={64} gradient="from-muted-foreground/20 to-muted-foreground/10">
               <Inbox className="w-8 h-8 text-muted-foreground" />
-            </div>
+            </BlobIcon>
             <p className="text-muted-foreground text-center max-w-sm">
               {t.casesSection.subtitle}
             </p>

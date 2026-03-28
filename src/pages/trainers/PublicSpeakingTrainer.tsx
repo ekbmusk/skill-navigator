@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Mic, ChevronRight, Sparkles, PenLine, ListChecks } from "lucide-react";
+import { BlobIcon } from "@/components/BrandIcons";
 import { Button } from "@/components/ui/button";
 import { useLang } from "@/i18n/LanguageContext";
 import { useTrainers } from "@/hooks/useTrainers";
@@ -81,15 +82,14 @@ const PublicSpeakingTrainer = () => {
       >
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
           <motion.div
-            className="w-32 h-32 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.2 }}
+            className="mx-auto mb-6 flex justify-center"
           >
-            <div>
-              <Mic size={16} className="text-primary mx-auto mb-1" />
-              <span className="text-4xl font-display font-bold text-gradient">{score}%</span>
-            </div>
+            <BlobIcon size={96} gradient="from-violet-500 to-purple-500" glow="bg-violet-500">
+              <span className="text-3xl font-display font-bold text-white">{score}%</span>
+            </BlobIcon>
           </motion.div>
 
           <h2 className="font-display text-xl font-bold mb-1">{t.trainers.completed}</h2>

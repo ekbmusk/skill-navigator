@@ -2,13 +2,30 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Crown, BarChart3, Palette, Mic, Check, Users2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OrbitalIcon, HexIcon, BlobIcon, DiamondIcon } from "@/components/BrandIcons";
 import { ROLE_DEFINITIONS, type SimRole, type Participant } from "@/data/simulationData";
 
 const ROLE_ICONS: Record<SimRole, React.ReactNode> = {
-  leader: <Crown size={20} />,
-  analyst: <BarChart3 size={20} />,
-  creative: <Palette size={20} />,
-  presenter: <Mic size={20} />,
+  leader: (
+    <OrbitalIcon size={48} gradient="from-amber-500 to-orange-500">
+      <Crown size={22} className="text-white" />
+    </OrbitalIcon>
+  ),
+  analyst: (
+    <HexIcon size={48} gradient="from-blue-500 to-cyan-500" animate={false}>
+      <BarChart3 size={22} className="text-white" />
+    </HexIcon>
+  ),
+  creative: (
+    <BlobIcon size={48} gradient="from-violet-500 to-purple-500">
+      <Palette size={22} className="text-white" />
+    </BlobIcon>
+  ),
+  presenter: (
+    <DiamondIcon size={48} gradient="from-emerald-500 to-teal-500">
+      <Mic size={22} className="text-white" />
+    </DiamondIcon>
+  ),
 };
 
 interface RoleAssignmentProps {
@@ -95,14 +112,7 @@ const RoleAssignment = ({
                 )}
 
                 <div className="flex items-start gap-4">
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center ${def.color} bg-current/10`}
-                    style={{
-                      backgroundColor: `color-mix(in srgb, currentColor 10%, transparent)`,
-                    }}
-                  >
-                    <span className={def.color}>{ROLE_ICONS[roleKey]}</span>
-                  </div>
+                  {ROLE_ICONS[roleKey]}
 
                   <div className="flex-1 min-w-0">
                     <h3 className="font-display font-semibold text-base">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Star, MessageSquare, Send, Award, Users2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OrbitalIcon } from "@/components/BrandIcons";
 import type { Participant, PeerFeedbackData, FeedbackSummary } from "@/data/simulationData";
 import { ROLE_DEFINITIONS, type SimRole } from "@/data/simulationData";
 
@@ -247,9 +248,9 @@ const PeerFeedback = ({
         className="rounded-xl border border-amber-500/30 bg-card-gradient p-5"
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-sm font-bold text-amber-500">
-            <User size={20} />
-          </div>
+          <OrbitalIcon size={44} gradient="from-amber-500 to-orange-500">
+            <User size={20} className="text-white" />
+          </OrbitalIcon>
           <div>
             <h4 className="font-semibold">
               {isKz ? "Командадағы өз жұмысыңызды бағалаңыз" : "Оцените свою работу в команде"}
