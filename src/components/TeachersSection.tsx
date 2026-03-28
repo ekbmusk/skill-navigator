@@ -29,6 +29,12 @@ const TeachersSection = () => {
 
   return (
     <section id="teachers" className="py-24 md:py-32 relative overflow-hidden section-alt">
+      {/* Diagonal cut at top */}
+      <div className="absolute top-0 left-0 w-full overflow-hidden leading-none rotate-180">
+        <svg className="relative block w-full h-[60px] md:h-[80px]" viewBox="0 0 1200 120" preserveAspectRatio="none">
+          <polygon fill="hsl(var(--background))" points="0,0 1200,120 0,120" />
+        </svg>
+      </div>
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
       <div className="absolute inset-0 bg-noise pointer-events-none" />
       <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
@@ -43,11 +49,11 @@ const TeachersSection = () => {
             viewport={{ once: true }}
             transition={{ type: "spring", stiffness: 200, damping: 24 }}
           >
-            <span className="text-gradient text-xl md:text-2xl font-bold uppercase tracking-widest">{t.teachersSection.label}</span>
+            <span className="text-accent text-xl md:text-2xl font-bold uppercase tracking-widest">{t.teachersSection.label}</span>
             <h2 className="font-display text-2xl md:text-3xl font-bold mt-3">
               {t.teachersSection.title} <span className="text-gradient">{t.teachersSection.titleHighlight}</span>
             </h2>
-            <p className="mt-4 text-muted-foreground leading-relaxed">{t.teachersSection.subtitle}</p>
+            <p className="mt-4 text-muted-foreground leading-relaxed font-light tracking-wide">{t.teachersSection.subtitle}</p>
 
             {/* Dashboard mockup */}
             <motion.div

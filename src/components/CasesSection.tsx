@@ -81,6 +81,10 @@ const CasesSection = () => {
 
   return (
     <section id="cases" className="py-24 md:py-32 section-alt relative">
+      {/* Diagonal cut SVG */}
+      <svg className="absolute top-0 left-0 w-full h-16 -translate-y-full" viewBox="0 0 1440 64" preserveAspectRatio="none" aria-hidden="true">
+        <polygon points="0,64 1440,0 1440,64" className="fill-current text-background" style={{ color: 'inherit' }} />
+      </svg>
       <div className="absolute inset-0 bg-noise pointer-events-none" />
       <div className="container px-4 relative">
         <motion.div
@@ -89,11 +93,11 @@ const CasesSection = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <span className="text-primary text-sm font-medium uppercase tracking-wider">{t.casesSection.label}</span>
+          <span className="text-accent text-sm font-medium uppercase tracking-wider">{t.casesSection.label}</span>
           <h2 className="font-display text-3xl md:text-5xl font-bold mt-3">
             {t.casesSection.title} <span className="text-gradient">{t.casesSection.titleHighlight}</span>
           </h2>
-          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">{t.casesSection.subtitle}</p>
+          <p className="mt-4 text-muted-foreground font-light max-w-xl mx-auto">{t.casesSection.subtitle}</p>
         </motion.div>
 
         {/* Loading state */}
@@ -177,7 +181,7 @@ const CasesSection = () => {
             <Button
               size="lg"
               variant="outline"
-              className="gap-2 group/btn relative overflow-hidden border-primary/30 hover:border-primary/60 transition-colors duration-300"
+              className="gap-2 group/btn relative overflow-hidden border-primary/30 hover:bg-accent/10 hover:border-accent/30 hover:text-accent transition-colors duration-300"
             >
               <span className="absolute inset-0 bg-gradient-to-r from-primary/5 to-violet-500/5 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300" />
               <Lightbulb size={18} className="relative z-10" />

@@ -41,6 +41,12 @@ const HowItWorksSection = () => {
 
   return (
     <section id="how-it-works" className="py-24 md:py-32 relative overflow-hidden section-alt">
+      {/* Diagonal cut at top */}
+      <div className="absolute top-0 left-0 w-full overflow-hidden leading-none rotate-180">
+        <svg className="relative block w-full h-[60px] md:h-[80px]" viewBox="0 0 1200 120" preserveAspectRatio="none">
+          <polygon fill="hsl(var(--background))" points="0,0 1200,120 0,120" />
+        </svg>
+      </div>
       {/* Background gradient blob */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/10 to-background" />
       <div className="absolute inset-0 bg-noise pointer-events-none" />
@@ -53,14 +59,14 @@ const HowItWorksSection = () => {
           viewport={{ once: true }}
           className="text-center mb-20"
         >
-          <span className="text-primary text-sm font-medium uppercase tracking-wider">
+          <span className="text-accent text-sm font-medium uppercase tracking-wider">
             {t.howItWorks.label}
           </span>
           <h2 className="font-display text-3xl md:text-5xl font-bold mt-3">
             {t.howItWorks.title}{" "}
             <span className="text-gradient">{t.howItWorks.titleHighlight}</span>
           </h2>
-          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+          <p className="mt-4 text-muted-foreground max-w-xl mx-auto font-light">
             {t.howItWorks.subtitle}
           </p>
         </motion.div>
@@ -69,7 +75,7 @@ const HowItWorksSection = () => {
           {/* Animated connector line */}
           <div className="hidden md:block absolute top-16 left-[20%] right-[20%] h-[2px] z-0">
             <motion.div
-              className="h-full bg-gradient-to-r from-blue-500/60 via-violet-500/60 to-emerald-500/60 rounded-full"
+              className="h-full bg-gradient-to-r from-accent/60 via-accent/40 to-accent/60 rounded-full"
               initial={{ scaleX: 0 }}
               animate={isInView ? { scaleX: 1 } : { scaleX: 0 }}
               transition={{ duration: 1.2, delay: 0.5, ease: "easeInOut" }}
@@ -77,7 +83,7 @@ const HowItWorksSection = () => {
             />
             {/* Animated glow on the line */}
             <motion.div
-              className="absolute inset-0 h-full bg-gradient-to-r from-blue-400/40 via-violet-400/40 to-emerald-400/40 blur-sm rounded-full"
+              className="absolute inset-0 h-full bg-gradient-to-r from-accent/40 via-accent/20 to-accent/40 blur-sm rounded-full"
               initial={{ scaleX: 0 }}
               animate={isInView ? { scaleX: 1 } : { scaleX: 0 }}
               transition={{ duration: 1.2, delay: 0.5, ease: "easeInOut" }}
@@ -153,7 +159,7 @@ const HowItWorksSection = () => {
 
                 {/* Description with staggered fade-in */}
                 <motion.p
-                  className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto"
+                  className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto font-light"
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}

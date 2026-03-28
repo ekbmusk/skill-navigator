@@ -11,7 +11,7 @@ const linkHoverVariants = {
 const FooterLink = ({ to, children, isSpan }: { to?: string; children: React.ReactNode; isSpan?: boolean }) => {
   const inner = (
     <motion.span
-      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-accent transition-colors cursor-pointer"
       variants={linkHoverVariants}
       initial="initial"
       whileHover="hover"
@@ -37,7 +37,11 @@ const Footer = () => {
   };
 
   return (
-    <footer className="relative border-t border-border bg-secondary/20">
+    <footer className="relative border-t border-border bg-muted/30">
+      {/* Diagonal cut SVG */}
+      <svg className="absolute top-0 left-0 w-full h-16 -translate-y-full" viewBox="0 0 1440 64" preserveAspectRatio="none" aria-hidden="true">
+        <polygon points="0,64 1440,64 720,0" className="fill-current text-muted/30" />
+      </svg>
       {/* Gradient accent line at top */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
@@ -45,10 +49,10 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <span className="font-display text-2xl md:text-3xl font-bold">
+            <span className="font-display text-2xl md:text-3xl font-bold tracking-tight">
               <span className="text-gradient">Skill</span>Map
             </span>
-            <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+            <p className="mt-4 text-sm text-muted-foreground font-light leading-relaxed">
               {t.footer.description}
             </p>
           </div>
@@ -99,7 +103,7 @@ const Footer = () => {
               onClick={scrollToTop}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors group/top"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors group/top"
             >
               <span className="hidden sm:inline">Back to top</span>
               <span className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center group-hover/top:bg-primary/20 transition-colors">

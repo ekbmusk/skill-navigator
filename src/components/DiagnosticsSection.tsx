@@ -65,14 +65,14 @@ const DiagnosticsSection = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <span className="text-primary text-sm font-medium uppercase tracking-wider">
+          <span className="text-accent text-sm font-medium uppercase tracking-wider">
             {t.diagSection.label}
           </span>
           <h2 className="font-display text-3xl md:text-5xl font-bold mt-3">
             {t.diagSection.title}{" "}
             <span className="text-gradient">{t.diagSection.titleHighlight}</span>
           </h2>
-          <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+          <p className="mt-4 text-muted-foreground font-light max-w-xl mx-auto">
             {t.diagSection.subtitle}
           </p>
         </motion.div>
@@ -136,7 +136,7 @@ const DiagnosticsSection = () => {
                   <h3 className="font-display text-lg font-semibold mb-2 relative z-10">
                     {f.title}
                   </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed relative z-10">
+                  <p className="text-sm text-muted-foreground font-light leading-relaxed relative z-10">
                     {f.description}
                   </p>
                 </div>
