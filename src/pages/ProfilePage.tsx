@@ -49,6 +49,7 @@ const ProfilePage = () => {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
 
   // Test history states
   const [testResults, setTestResults] = useState<Tables<"diagnostics_results">[]>([]);
@@ -166,6 +167,26 @@ const ProfilePage = () => {
     }
   };
 
+  // Override recalculated anti-cheat with saved data if available
+  const applyStoredAntiCheat = (result: FullScoringResult | null, test: Tables<"diagnostics_results">): FullScoringResult | null => {
+    if (!result) return null;
+    const saved = (test.answers as any)?._anti_cheat;
+    if (saved) {
+      return {
+        ...result,
+        adjustedConfidence: saved.confidence ?? result.adjustedConfidence,
+        antiCheat: {
+          ...result.antiCheat,
+          passed: saved.passed ?? result.antiCheat.passed,
+          suspicionScore: saved.suspicion ?? result.antiCheat.suspicionScore,
+          recommendation: saved.recommendation ?? result.antiCheat.recommendation,
+        },
+        isFlagged: saved.passed === false || (saved.recommendation && saved.recommendation !== "valid"),
+      } as FullScoringResult;
+    }
+    return result;
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -201,7 +222,7 @@ const ProfilePage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container max-w-4xl pt-24 pb-12 px-3 sm:px-4">
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className={`grid w-full ${role === "student" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-6" : "grid-cols-2"} mb-6 h-auto`}>
             <TabsTrigger value="profile">{t.profile.title}</TabsTrigger>
             {role === "student" && <TabsTrigger value="progress">{t.progress.title}</TabsTrigger>}
@@ -312,6 +333,7 @@ const ProfilePage = () => {
                 trainerAttempts={trainerAttempts}
                 lang={lang}
                 onEditProfile={() => setEditDialogOpen(true)}
+                onGroupClick={() => setActiveTab("group")}
               />
             )}
           </TabsContent>
@@ -351,7 +373,14 @@ const ProfilePage = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{item.studentName}</div>
-                            <div className="text-xs text-muted-foreground">{item.detail}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {item.detail}
+                              {(item as any).flagged && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium ml-1">
+                                  {isKz ? "Күдікті" : "Подозрительно"}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="text-[11px] text-muted-foreground shrink-0">
                             {(() => {
@@ -582,7 +611,7 @@ const ProfilePage = () => {
 
                       {/* Profile & Confidence Cards (from answers JSONB) */}
                       {(() => {
-                        const full = getFullResultForTest(selectedTest);
+                        const full = applyStoredAntiCheat(getFullResultForTest(selectedTest), selectedTest);
                         if (!full) return null;
                         return (
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -626,7 +655,7 @@ const ProfilePage = () => {
 
                       {/* Scores by Category */}
                       {(() => {
-                        const full = getFullResultForTest(selectedTest);
+                        const full = applyStoredAntiCheat(getFullResultForTest(selectedTest), selectedTest);
                         const testType = (selectedTest.answers as any)?._test_type || "general";
 
                         // Use scoring engine categories if available — they have correct labels
@@ -808,9 +837,25 @@ const ProfilePage = () => {
                         );
                       })()}
 
+                      {/* Cheating flag banner */}
+                      {(selectedTest.answers as any)?._cheating_flag && (
+                        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-center">
+                          <p className="text-sm text-destructive font-medium">
+                            {isKz
+                              ? "⚠️ Бұл нәтиже тексеру үшін белгіленді"
+                              : "⚠️ Этот результат помечен для проверки"}
+                          </p>
+                          <p className="text-xs text-destructive/70 mt-1">
+                            {isKz
+                              ? "Оқытушыңыз хабардар етілді"
+                              : "Ваш преподаватель уведомлён"}
+                          </p>
+                        </div>
+                      )}
+
                       {/* Anti-cheat status */}
                       {(() => {
-                        const full = getFullResultForTest(selectedTest);
+                        const full = applyStoredAntiCheat(getFullResultForTest(selectedTest), selectedTest);
                         if (!full) return null;
                         return (
                           <div className={`flex items-center gap-2 justify-center text-xs ${full.antiCheat.passed ? "text-green-400" : "text-yellow-400"}`}>
@@ -832,7 +877,7 @@ const ProfilePage = () => {
                           variant="outline"
                           onClick={() => {
                             const cats = t.categories as Record<string, string>;
-                            const full = getFullResultForTest(selectedTest);
+                            const full = applyStoredAntiCheat(getFullResultForTest(selectedTest), selectedTest);
                             const scores = {
                               cognitive: selectedTest.cognitive_score,
                               soft: selectedTest.soft_score,
@@ -931,6 +976,11 @@ const ProfilePage = () => {
                                     const color = tt === "physics" ? "bg-cyan-500/10 text-cyan-500" : tt === "infocomm" ? "bg-violet-500/10 text-violet-500" : "bg-primary/10 text-primary";
                                     return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${color}`}>{label}</span>;
                                   })()}
+                                  {(test.answers as any)?._cheating_flag && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium">
+                                      ⚠️
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-1">
                                   {t.categories.cognitive}: {test.cognitive_score}% | {t.categories.soft}: {test.soft_score}% | {t.categories.professional}: {test.professional_score}%

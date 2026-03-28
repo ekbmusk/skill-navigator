@@ -565,6 +565,8 @@ export const kz = {
     achievements: "Жетістіктер",
     exported: "Нәтижелер экспортталды",
     topStudent: "Үздік студент",
+    cheatingDetected: "Күдікті белсенділік",
+    flaggedForReview: "Тексеру үшін белгіленді",
   },
   dashboardCases: {
     tab: "Кейстер",

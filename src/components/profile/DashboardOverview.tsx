@@ -19,6 +19,7 @@ interface Props {
   trainerAttempts: { trainer_type: string; score: number; max_score: number; completed_at: string }[];
   lang: "ru" | "kz";
   onEditProfile: () => void;
+  onGroupClick?: () => void;
 }
 
 const container = {
@@ -35,7 +36,7 @@ const item = {
 };
 
 const DashboardOverview = ({
-  user, profile, testResults, caseHistory, trainerAttempts, lang, onEditProfile,
+  user, profile, testResults, caseHistory, trainerAttempts, lang, onEditProfile, onGroupClick,
 }: Props) => {
   const isKz = lang === "kz";
 
@@ -106,9 +107,12 @@ const DashboardOverview = ({
           </h2>
           {profile?.group_name && (
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm px-3 py-0.5 rounded-full bg-secondary text-muted-foreground">
-                {profile.group_name}
-              </span>
+              <button
+                onClick={onGroupClick}
+                className="text-sm px-3 py-0.5 rounded-full bg-accent/10 text-accent hover:bg-accent/20 transition-colors cursor-pointer"
+              >
+                {profile.group_name} →
+              </button>
             </div>
           )}
         </div>

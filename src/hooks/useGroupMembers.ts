@@ -54,27 +54,10 @@ export function useGroupMembers(): UseGroupMembersResult {
           return;
         }
 
-        // 2. Filter to students only
-        const userIds = groupProfiles.map((p) => p.user_id);
-        const { data: roles, error: rolesError } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .in("user_id", userIds)
-          .eq("role", "student");
+        // 2. All group members (teachers have their own dashboard, won't appear here)
+        const studentProfiles = groupProfiles;
 
-        if (rolesError) throw rolesError;
-
-        const studentIds = new Set((roles ?? []).map((r) => r.user_id));
-        const studentProfiles = groupProfiles.filter((p) =>
-          studentIds.has(p.user_id)
-        );
-
-        if (studentProfiles.length === 0) {
-          if (!cancelled) { setMembers([]); setLoading(false); }
-          return;
-        }
-
-        // 3. Fetch diagnostics results for students
+        // 3. Fetch diagnostics results for group members
         const ids = studentProfiles.map((p) => p.user_id);
         const { data: results, error: resultsError } = await supabase
           .from("diagnostics_results")

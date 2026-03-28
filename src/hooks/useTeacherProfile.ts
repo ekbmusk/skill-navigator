@@ -6,6 +6,7 @@ export interface RecentActivity {
   studentName: string;
   detail: string;
   timestamp: string;
+  flagged?: boolean;
 }
 
 export interface TeacherProfileData {
@@ -127,6 +128,7 @@ export const useTeacherProfile = () => {
           studentName: nameMap.get(r.user_id) || "Student",
           detail: `${typeLabel} — ${r.average_score}%`,
           timestamp: r.completed_at,
+          flagged: (r.answers as any)?._cheating_flag === true,
         });
       }
 

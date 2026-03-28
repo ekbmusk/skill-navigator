@@ -10,6 +10,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { useDiagnostics, type DiagnosticsResult } from "@/hooks/useDiagnostics";
 import { useToast } from "@/hooks/use-toast";
 import { getResultsCompat } from "@/utils/scoringEngine";
+import { runLiveCheck } from "@/utils/liveAntiCheat";
 import type { TimingData } from "@/utils/antiCheatDetection";
 import { questions as allQuestions } from "@/data/diagnosticsQuestions";
 
@@ -36,7 +37,9 @@ const DiagnosticsPage = () => {
   const [testStartTime] = useState(() => Date.now());
   const [shuffleSeed] = useState(() => Math.floor(Math.random() * 1000000));
   const [questionTimestamps, setQuestionTimestamps] = useState<Record<number, number>>({ 0: Date.now() });
-  const { t } = useLang();
+  const [warningShown, setWarningShown] = useState(false);
+  const { t, lang } = useLang();
+  const isKz = lang === "kz";
   const { saveDiagnosticsResult } = useDiagnostics();
   const { toast } = useToast();
 
@@ -74,6 +77,27 @@ const DiagnosticsPage = () => {
   const selectAnswer = (score: number) => {
     setAnswers((prev) => ({ ...prev, [q.id]: score }));
   };
+
+  // Live anti-cheat check every 4 questions
+  useEffect(() => {
+    const count = Object.keys(answers).length;
+    if (count > 0 && count % 4 === 0) {
+      const check = runLiveCheck(answers, questionTimestamps);
+      if (check.suspicious && !warningShown) {
+        setWarningShown(true);
+        toast({
+          variant: "destructive",
+          title: isKz ? "\u26A0\uFE0F \u041A\u04AF\u0434\u0456\u043A\u0442\u0456 \u0431\u0435\u043B\u0441\u0435\u043D\u0434\u0456\u043B\u0456\u043A" : "\u26A0\uFE0F \u041F\u043E\u0434\u043E\u0437\u0440\u0438\u0442\u0435\u043B\u044C\u043D\u0430\u044F \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C",
+          description: isKz
+            ? "\u0416\u0430\u0443\u0430\u043F\u0442\u0430\u0440\u044B\u04A3\u044B\u0437\u0434\u0430 \u043A\u04AF\u0434\u0456\u043A\u0442\u0456 \u0437\u0430\u04A3\u0434\u044B\u043B\u044B\u049B\u0442\u0430\u0440 \u0430\u043D\u044B\u049B\u0442\u0430\u043B\u0434\u044B. \u0421\u04B1\u0440\u0430\u049B\u0442\u0430\u0440\u0434\u044B \u043C\u04B1\u049B\u0438\u044F\u0442 \u043E\u049B\u044B\u04A3\u044B\u0437."
+            : "\u0412 \u0432\u0430\u0448\u0438\u0445 \u043E\u0442\u0432\u0435\u0442\u0430\u0445 \u043E\u0431\u043D\u0430\u0440\u0443\u0436\u0435\u043D\u044B \u043F\u043E\u0434\u043E\u0437\u0440\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0435 \u043F\u0430\u0442\u0442\u0435\u0440\u043D\u044B. \u041F\u043E\u0436\u0430\u043B\u0443\u0439\u0441\u0442\u0430, \u0432\u043D\u0438\u043C\u0430\u0442\u0435\u043B\u044C\u043D\u043E \u0447\u0438\u0442\u0430\u0439\u0442\u0435 \u0432\u043E\u043F\u0440\u043E\u0441\u044B.",
+          duration: 8000,
+        });
+        // Reset so it can warn again after another 4 suspicious answers
+        setTimeout(() => setWarningShown(false), 15000);
+      }
+    }
+  }, [Object.keys(answers).length]);
 
   const next = () => {
     if (currentQ < questions.length - 1) setCurrentQ((p) => p + 1);
@@ -129,6 +153,7 @@ const DiagnosticsPage = () => {
       const { fullResult } = getResults();
       const answersWithAntiCheat = {
         ...answers,
+        _cheating_flag: !fullResult.antiCheat.passed,
         _anti_cheat: {
           passed: fullResult.antiCheat.passed,
           confidence: fullResult.adjustedConfidence,

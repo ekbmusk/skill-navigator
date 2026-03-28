@@ -546,6 +546,8 @@ export const ru = {
     achievements: "Достижения",
     exported: "Результаты экспортированы",
     topStudent: "Лучший студент",
+    cheatingDetected: "Подозрительная активность",
+    flaggedForReview: "Помечен для проверки",
   },
   dashboardCases: {
     tab: "Кейсы",
