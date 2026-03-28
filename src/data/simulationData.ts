@@ -67,6 +67,11 @@ export interface FeedbackSummary {
   avg_problem_solving: number;
   total_avg: number;
   count: number;
+  // Self-assessment (optional — only present if user submitted self-review)
+  self_communication?: number;
+  self_teamwork?: number;
+  self_leadership?: number;
+  self_problem_solving?: number;
 }
 
 // Role definitions with descriptions and responsibilities

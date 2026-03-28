@@ -25,9 +25,10 @@ const infoCommAntiCheatConfig: AntiCheatQuestionConfig = {
   getQuestionsByCategory: getInfoCommQuestionsByCategory as () => Record<string, { id: number; isReversed: boolean }[]>,
 };
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { getSkillLevel, variance, average, calculateRawConfidenceWithDiversity } from "./scoringHelpers";
+export type { SkillLevel } from "./scoringHelpers";
 
-export type SkillLevel = "beginner" | "basic" | "advanced" | "expert";
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type InfoCommProfile =
   | "info_seeker"       // высокий мотивационный + когнитивный
@@ -68,25 +69,6 @@ export interface InfoCommDiagnosticsResult {
   isFlagged: boolean;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function getSkillLevel(score: number): SkillLevel {
-  if (score >= 75) return "expert";
-  if (score >= 50) return "advanced";
-  if (score >= 25) return "basic";
-  return "beginner";
-}
-
-function variance(arr: number[]): number {
-  if (arr.length < 2) return 0;
-  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-  return arr.reduce((sum, x) => sum + (x - mean) ** 2, 0) / arr.length;
-}
-
-function average(arr: number[]): number {
-  return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-}
-
 // ─── Category Scoring ────────────────────────────────────────────────────────
 
 function scoreCategoryWeighted(
@@ -118,25 +100,6 @@ function scoreCategoryWeighted(
     internalVariance: Math.round(variance(questionScores.map(q => q.adjusted)) * 100) / 100,
     weightedContribution: rawScore * categoryWeight,
   };
-}
-
-// ─── Confidence ──────────────────────────────────────────────────────────────
-
-function calculateRawConfidence(
-  answers: Record<number, number>,
-  categories: InfoCommCategoryResult[]
-): number {
-  const total = infoCommQuestions.length;
-  const answered = Object.keys(answers).length;
-
-  const completeness = answered / total;
-  const avgVariance = average(categories.map(c => c.internalVariance));
-  const varianceFactor = Math.min(1, avgVariance / 1.2);
-  const uniqueValues = new Set(Object.values(answers)).size;
-  const diversityFactor = Math.min(1, uniqueValues / 4);
-
-  const confidence = completeness * 0.55 + varianceFactor * 0.30 + diversityFactor * 0.15;
-  return Math.round(Math.min(1, confidence) * 100) / 100;
 }
 
 // ─── Profile Pattern ─────────────────────────────────────────────────────────
@@ -185,7 +148,9 @@ export function runInfoCommScoringEngine(
   ) / 10;
 
   // 4. Confidence
-  const rawConfidence = calculateRawConfidence(answers, categories);
+  const rawConfidence = calculateRawConfidenceWithDiversity(
+    Object.keys(answers).length, infoCommQuestions.length, categories, answers
+  );
   const adjustedConfidence = applyAntiCheatPenalty(rawConfidence, antiCheat);
 
   // 5. Profile

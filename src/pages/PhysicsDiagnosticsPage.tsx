@@ -11,12 +11,24 @@ import { getPhysicsResultsCompat } from "@/utils/physicsScoringEngine";
 import type { TimingData } from "@/utils/antiCheatDetection";
 import { physicsQuestions as allQuestions } from "@/data/physicsQuestions";
 
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const shuffled = [...arr];
+  let s = seed;
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    const j = s % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 const PhysicsDiagnosticsPage = () => {
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [finished, setFinished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testStartTime] = useState(() => Date.now());
+  const [shuffleSeed] = useState(() => Math.floor(Math.random() * 1000000));
   const [questionTimestamps, setQuestionTimestamps] = useState<Record<number, number>>({ 0: Date.now() });
   const { t } = useLang();
   const { saveDiagnosticsResult } = useDiagnostics();
@@ -161,7 +173,7 @@ const PhysicsDiagnosticsPage = () => {
           <motion.div key={q.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
             <h2 className="font-display text-2xl md:text-3xl font-bold mb-8">{q.text}</h2>
             <div className="space-y-3">
-              {q.options.map((opt, i) => {
+              {seededShuffle(q.options, shuffleSeed + q.id).map((opt, i) => {
                 const selected = answers[q.id] === opt.score;
                 return (
                   <button

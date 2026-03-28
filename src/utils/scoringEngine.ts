@@ -15,9 +15,10 @@ import type { Category } from "@/data/diagnosticsQuestions";
 import { runAntiCheatDetection, applyAntiCheatPenalty } from "./antiCheatDetection";
 import type { TimingData, AntiCheatReport } from "./antiCheatDetection";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { getSkillLevel, variance, average, calculateRawConfidenceWithDiversity } from "./scoringHelpers";
+export type { SkillLevel } from "./scoringHelpers";
 
-export type SkillLevel = "beginner" | "basic" | "advanced" | "expert";
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ProfilePattern =
     | "analytical_thinker"
@@ -59,27 +60,6 @@ export interface DiagnosticsResult {
     isFlagged: boolean;
 }
 
-// ─── Level Thresholds ────────────────────────────────────────────────────────
-
-function getSkillLevel(score: number): SkillLevel {
-    if (score >= 75) return "expert";
-    if (score >= 50) return "advanced";
-    if (score >= 25) return "basic";
-    return "beginner";
-}
-
-// ─── Variance ────────────────────────────────────────────────────────────────
-
-function variance(arr: number[]): number {
-    if (arr.length < 2) return 0;
-    const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-    return arr.reduce((sum, x) => sum + (x - mean) ** 2, 0) / arr.length;
-}
-
-function average(arr: number[]): number {
-    return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-}
-
 // ─── Category Scoring ────────────────────────────────────────────────────────
 
 function scoreCategoryWeighted(
@@ -109,32 +89,6 @@ function scoreCategoryWeighted(
         internalVariance: Math.round(variance(questionScores.map(q => q.adjusted)) * 100) / 100,
         weightedContribution: rawScore * categoryWeight,
     };
-}
-
-// ─── Confidence Score ─────────────────────────────────────────────────────────
-
-function calculateRawConfidence(
-    answers: Record<number, number>,
-    categories: CategoryResult[]
-): number {
-    const total = questions.length;
-    const answered = Object.keys(answers).length;
-
-    // 1. Completeness (60%)
-    const completeness = answered / total;
-
-    // 2. Average intra-category variance — низкая однородность снижает доверие
-    // Идеально: каждый вопрос отвечен по-разному (variance ≈ 1–2)
-    const avgVariance = average(categories.map(c => c.internalVariance));
-    // Нормализуем: variance 0 → подозрение, variance ~1.5 → норма
-    const varianceFactor = Math.min(1, avgVariance / 1.2);
-
-    // 3. Unique values across all answers
-    const uniqueValues = new Set(Object.values(answers)).size;
-    const diversityFactor = Math.min(1, uniqueValues / 4);
-
-    const confidence = completeness * 0.55 + varianceFactor * 0.30 + diversityFactor * 0.15;
-    return Math.round(Math.min(1, confidence) * 100) / 100;
 }
 
 // ─── Profile Pattern ──────────────────────────────────────────────────────────
@@ -189,7 +143,9 @@ export function runScoringEngine(
     ) / 10;
 
     // 4. Confidence
-    const rawConfidence = calculateRawConfidence(answers, categories);
+    const rawConfidence = calculateRawConfidenceWithDiversity(
+        Object.keys(answers).length, questions.length, categories, answers
+    );
     const adjustedConfidence = applyAntiCheatPenalty(rawConfidence, antiCheat);
 
     // 5. Profile

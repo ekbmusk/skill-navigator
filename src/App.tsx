@@ -19,6 +19,10 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const ResourcesPage = lazy(() => import("./pages/ResourcesPage"));
 const TestsListPage = lazy(() => import("./pages/TestsListPage"));
+const TrainersListPage = lazy(() => import("./pages/TrainersListPage"));
+const SbiFeedbackTrainer = lazy(() => import("./pages/trainers/SbiFeedbackTrainer"));
+const ConflictResolutionTrainer = lazy(() => import("./pages/trainers/ConflictResolutionTrainer"));
+const PublicSpeakingTrainer = lazy(() => import("./pages/trainers/PublicSpeakingTrainer"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const LoadingFallback = () => (
@@ -84,6 +88,26 @@ const App = () => (
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/trainers" element={
+                <ProtectedRoute>
+                  <TrainersListPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/trainers/sbi-feedback" element={
+                <ProtectedRoute>
+                  <SbiFeedbackTrainer />
+                </ProtectedRoute>
+              } />
+              <Route path="/trainers/conflict-resolution" element={
+                <ProtectedRoute>
+                  <ConflictResolutionTrainer />
+                </ProtectedRoute>
+              } />
+              <Route path="/trainers/public-speaking" element={
+                <ProtectedRoute>
+                  <PublicSpeakingTrainer />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

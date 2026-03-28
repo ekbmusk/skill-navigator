@@ -7,23 +7,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Save, User, Download, Printer, ArrowLeft, TrendingUp, TrendingDown, Minus, Trophy, BarChart3, Target, Brain, Shield, ShieldAlert } from "lucide-react";
+import { Camera, Save, User, Download, Printer, ArrowLeft, TrendingUp, TrendingDown, Minus, Trophy, BarChart3, Target, Brain, Shield, ShieldAlert, Briefcase, Users, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
+import { useCaseHistory, type CaseHistoryItem } from "@/hooks/useCaseHistory";
+import { ROLE_DEFINITIONS, type SimRole } from "@/data/simulationData";
 import type { Tables } from "@/integrations/supabase/types";
 import { runScoringEngine } from "@/utils/scoringEngine";
+import { runPhysicsScoringEngine } from "@/utils/physicsScoringEngine";
+import { runInfoCommScoringEngine } from "@/utils/infoCommScoringEngine";
 import type { DiagnosticsResult as FullScoringResult, ProfilePattern, SkillLevel } from "@/utils/scoringEngine";
+import { questions as generalQuestions } from "@/data/diagnosticsQuestions";
+import { physicsQuestions } from "@/data/physicsQuestions";
+import { infoCommQuestions } from "@/data/infoCommQuestions";
 import { printReport, printBasicReport } from "@/utils/pdfExport";
+import { useTrainers, type TrainerAttempt, type TrainerType } from "@/hooks/useTrainers";
+import { rubricItems } from "@/data/trainers/publicSpeakingData";
 import { motion } from "framer-motion";
 import ProgressChart from "@/components/ProgressChart";
+import DashboardOverview from "@/components/profile/DashboardOverview";
+import ProfileEditDialog from "@/components/profile/ProfileEditDialog";
 
 const ProfilePage = () => {
   const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const isKz = lang === "kz";
   const { loadAllResults, downloadAsCSV, computeTrend } = useDiagnostics();
 
   const [fullName, setFullName] = useState(profile?.full_name || "");
@@ -31,16 +43,29 @@ const ProfilePage = () => {
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Test history states
   const [testResults, setTestResults] = useState<Tables<"diagnostics_results">[]>([]);
   const [loadingTests, setLoadingTests] = useState(false);
   const [selectedTest, setSelectedTest] = useState<Tables<"diagnostics_results"> | null>(null);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
-  // Load test results on component mount
+  // Case history states
+  const { loadCaseHistory, computeStats, loading: casesLoading } = useCaseHistory();
+  const [caseHistory, setCaseHistory] = useState<CaseHistoryItem[]>([]);
+  const [selectedCase, setSelectedCase] = useState<CaseHistoryItem | null>(null);
+
+  const { loadAttempts, loading: trainersLoading } = useTrainers();
+  const [trainerAttempts, setTrainerAttempts] = useState<TrainerAttempt[]>([]);
+  const [selectedTrainer, setSelectedTrainer] = useState<TrainerType | null>(null);
+
+  // Load test results and case history on component mount
   useEffect(() => {
     if (role === "student") {
       loadTestResults();
+      loadCaseHistory().then(setCaseHistory);
+      loadAttempts().then(setTrainerAttempts);
     }
   }, [role]);
 
@@ -53,7 +78,7 @@ const ProfilePage = () => {
       toast({
         variant: "destructive",
         title: t.profile.saveError,
-        description: "Тесттерді жүктеу барысында қате орын алды",
+        description: t.profileErrors.loadTestsError,
       });
     } finally {
       setLoadingTests(false);
@@ -91,7 +116,40 @@ const ProfilePage = () => {
   const getFullResultForTest = (test: Tables<"diagnostics_results">): FullScoringResult | null => {
     if (!test.answers || typeof test.answers !== "object") return null;
     try {
-      return runScoringEngine(test.answers as Record<number, number>);
+      const answers = test.answers as Record<string, any>;
+      const testType = answers._test_type || "general";
+      if (testType === "physics") {
+        const r = runPhysicsScoringEngine(answers as Record<number, number>);
+        const physicsCats = (t as any).physicsCategories as Record<string, string> | undefined;
+        return {
+          ...r,
+          categories: r.categories.map(c => ({
+            ...c,
+            label: physicsCats?.[c.category] || c.label,
+          })),
+          dominantPattern: r.dominantProfile as any,
+          strengthAreas: r.strengthAreas as any,
+          growthAreas: r.growthAreas as any,
+        } as any;
+      }
+      if (testType === "infocomm") {
+        const r = runInfoCommScoringEngine(answers as Record<number, number>, undefined, lang);
+        return {
+          ...r,
+          dominantPattern: r.dominantProfile as any,
+          strengthAreas: r.strengthAreas as any,
+          growthAreas: r.growthAreas as any,
+        } as any;
+      }
+      const generalResult = runScoringEngine(answers as Record<number, number>);
+      const cats = t.categories as Record<string, string>;
+      return {
+        ...generalResult,
+        categories: generalResult.categories.map(c => ({
+          ...c,
+          label: cats[c.category] || c.label,
+        })),
+      };
     } catch {
       return null;
     }
@@ -133,60 +191,25 @@ const ProfilePage = () => {
       <Navbar />
       <div className="container max-w-4xl pt-24 pb-12">
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className={`grid w-full ${role === "student" ? "grid-cols-3" : "grid-cols-1"} mb-6`}>
+          <TabsList className={`grid w-full ${role === "student" ? "grid-cols-5" : "grid-cols-1"} mb-6`}>
             <TabsTrigger value="profile">{t.profile.title}</TabsTrigger>
             {role === "student" && <TabsTrigger value="progress">{t.progress.title}</TabsTrigger>}
             {role === "student" && <TabsTrigger value="tests">{t.profile.tests}</TabsTrigger>}
+            {role === "student" && <TabsTrigger value="trainers">{t.nav.trainers}</TabsTrigger>}
+            {role === "student" && <TabsTrigger value="cases">{t.profileCases?.tab || "Кейсы"}</TabsTrigger>}
           </TabsList>
 
           {/* Profile Tab */}
           <TabsContent value="profile">
-            <Card className="border-border bg-card">
-              <CardHeader className="text-center">
-                <CardTitle className="font-display text-2xl text-foreground">{t.profile.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                    <Avatar className="h-24 w-24 border-2 border-primary/30">
-                      {avatarUrl ? <AvatarImage src={avatarUrl} alt="Avatar" /> : null}
-                      <AvatarFallback className="bg-secondary text-secondary-foreground text-xl font-display">{initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Camera className="h-6 w-6 text-foreground" />
-                    </div>
-                  </div>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
-                  <span className="text-xs text-muted-foreground">{uploading ? t.profile.avatarUploading : t.profile.avatarHint}</span>
-                </div>
-
-                <div className="flex justify-center">
-                  <span className="px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs uppercase tracking-wider font-medium">
-                    {role === "teacher" ? t.nav.teacher : t.nav.student}
-                  </span>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-muted-foreground">{t.auth.email}</Label>
-                    <Input id="email" value={user?.email || ""} disabled className="bg-muted/50" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">{t.profile.fullName}</Label>
-                    <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t.profile.fullNamePlaceholder} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="groupName">{t.profile.group}</Label>
-                    <Input id="groupName" value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder={t.profile.groupPlaceholder} />
-                  </div>
-                </div>
-
-                <Button onClick={handleSave} disabled={saving} className="w-full">
-                  <Save className="mr-2 h-4 w-4" />
-                  {saving ? t.profile.saving : t.profile.save}
-                </Button>
-              </CardContent>
-            </Card>
+            <DashboardOverview
+              user={user}
+              profile={profile}
+              testResults={testResults}
+              caseHistory={caseHistory}
+              trainerAttempts={trainerAttempts}
+              lang={lang}
+              onEditProfile={() => setEditDialogOpen(true)}
+            />
           </TabsContent>
 
           {/* Progress Tab */}
@@ -376,14 +399,20 @@ const ProfilePage = () => {
                               <TrendingUp size={18} className="mx-auto mb-1.5 text-green-400" />
                               <div className="text-xs text-muted-foreground mb-0.5">{t.results.strengthAreas}</div>
                               <div className="text-xs font-medium leading-tight">
-                                {full.strengthAreas.map(a => (t.categories as Record<string, string>)[a] || a).join(", ")}
+                                {full.strengthAreas.map(a => {
+                                  const catResult = full.categories.find(c => c.category === a);
+                                  return catResult?.label || (t.categories as Record<string, string>)[a] || a;
+                                }).join(", ")}
                               </div>
                             </div>
                             <div className="p-3 rounded-xl bg-card-gradient border border-border text-center">
                               <Target size={18} className="mx-auto mb-1.5 text-yellow-400" />
                               <div className="text-xs text-muted-foreground mb-0.5">{t.results.growthAreas}</div>
                               <div className="text-xs font-medium leading-tight">
-                                {full.growthAreas.map(a => (t.categories as Record<string, string>)[a] || a).join(", ")}
+                                {full.growthAreas.map(a => {
+                                  const catResult = full.categories.find(c => c.category === a);
+                                  return catResult?.label || (t.categories as Record<string, string>)[a] || a;
+                                }).join(", ")}
                               </div>
                             </div>
                           </div>
@@ -393,6 +422,157 @@ const ProfilePage = () => {
                       {/* Scores by Category */}
                       {(() => {
                         const full = getFullResultForTest(selectedTest);
+                        const testType = (selectedTest.answers as any)?._test_type || "general";
+
+                        // Use scoring engine categories if available — they have correct labels
+                        if (full?.categories && full.categories.length > 0) {
+                          const dbScores = [
+                            selectedTest.cognitive_score,
+                            selectedTest.soft_score,
+                            selectedTest.professional_score,
+                            selectedTest.adaptability_score,
+                          ];
+                          const answers = selectedTest.answers as Record<string, any>;
+                          const questionSet = testType === "physics"
+                            ? physicsQuestions
+                            : testType === "infocomm"
+                              ? infoCommQuestions
+                              : generalQuestions;
+
+                          return (
+                            <div className="grid sm:grid-cols-2 gap-4">
+                              {full.categories.map((catResult, i) => {
+                                const score = dbScores[i] ?? Math.round(catResult.rawScore);
+                                const level = getLevel(score);
+                                const isExpanded = expandedCategory === catResult.category;
+                                return (
+                                  <div
+                                    key={catResult.category}
+                                    className={`p-4 rounded-lg bg-card border transition-all cursor-pointer ${isExpanded ? "border-primary/50 sm:col-span-2" : "border-border hover:border-primary/30"}`}
+                                    onClick={() => setExpandedCategory(isExpanded ? null : catResult.category)}
+                                  >
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-sm font-medium">{catResult.label}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-sm font-bold ${level.color}`}>{score}%</span>
+                                        <ArrowLeft size={12} className={`text-muted-foreground transition-transform ${isExpanded ? "rotate-[-90deg]" : "rotate-[180deg]"}`} />
+                                      </div>
+                                    </div>
+                                    <div className="mb-2">
+                                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                        {t.results.skillLevel}: {getSkillLevelLabel(catResult.level)}
+                                      </span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                                      <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />
+                                    </div>
+                                    {testType === "general" && !isExpanded && (
+                                      <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                                        {getRecommendation(catResult.category, score)}
+                                      </p>
+                                    )}
+
+                                    {/* Expanded: show question-level breakdown */}
+                                    {isExpanded && (
+                                      <div className="mt-4 space-y-3 border-t border-border pt-3" onClick={(e) => e.stopPropagation()}>
+                                        <div className="text-xs font-medium text-muted-foreground mb-2">
+                                          {isKz ? "Сұрақтар бойынша нәтижелер" : "Результаты по вопросам"} ({catResult.questionScores.length})
+                                        </div>
+                                        {catResult.questionScores.map((qs) => {
+                                          const qData = questionSet.find((q: any) => q.id === qs.id);
+                                          if (!qData) return null;
+                                          const chosenScore = answers[String(qs.id)];
+                                          const chosenOpt = qData.options.find((o: any) => o.score === chosenScore);
+                                          const maxScore = Math.max(...qData.options.map((o: any) => o.score));
+                                          const bestOpt = qData.options.find((o: any) => o.score === maxScore);
+                                          const pct = maxScore > 0 ? Math.round((qs.adjusted / maxScore) * 100) : 0;
+                                          const isCorrect = chosenScore === maxScore;
+                                          // Localize question text and option labels
+                                          let qText = qData.text;
+                                          let chosenLabel = chosenOpt ? (chosenOpt as any).label : "—";
+                                          let bestLabel = bestOpt ? (bestOpt as any).label : "—";
+
+                                          if (isKz) {
+                                            if (testType === "general" && (t as any).questions) {
+                                              const tq = (t as any).questions[qData.id - 1];
+                                              if (tq) {
+                                                qText = tq.text || qText;
+                                                const tChosenOpt = tq.options?.find((o: any) => o.score === chosenScore);
+                                                if (tChosenOpt) chosenLabel = tChosenOpt.label;
+                                                const tBestOpt = tq.options?.find((o: any) => o.score === maxScore);
+                                                if (tBestOpt) bestLabel = tBestOpt.label;
+                                              }
+                                            } else if (testType === "physics" && (t as any).physicsQuestions) {
+                                              const tq = (t as any).physicsQuestions[qData.id - 1];
+                                              if (tq) {
+                                                qText = tq.text || qText;
+                                                const tChosenOpt = tq.options?.find((o: any) => o.score === chosenScore);
+                                                if (tChosenOpt) chosenLabel = tChosenOpt.label;
+                                                const tBestOpt = tq.options?.find((o: any) => o.score === maxScore);
+                                                if (tBestOpt) bestLabel = tBestOpt.label;
+                                              }
+                                            } else if (testType === "infocomm") {
+                                              // InfoComm questions have textKz/labelKz directly
+                                              qText = (qData as any).textKz || qText;
+                                              if (chosenOpt && (chosenOpt as any).labelKz) chosenLabel = (chosenOpt as any).labelKz;
+                                              if (bestOpt && (bestOpt as any).labelKz) bestLabel = (bestOpt as any).labelKz;
+                                            }
+                                          }
+
+                                          const isKnowledgeTest = testType === "physics";
+                                          const barColor = isKnowledgeTest
+                                            ? (isCorrect ? "bg-green-500" : "bg-red-500")
+                                            : (pct >= 75 ? "bg-green-500" : pct >= 50 ? "bg-primary" : pct >= 25 ? "bg-yellow-500" : "bg-red-500");
+                                          const scoreColor = isKnowledgeTest
+                                            ? (isCorrect ? "text-green-400" : "text-red-400")
+                                            : (pct >= 75 ? "text-green-400" : pct >= 50 ? "text-primary" : pct >= 25 ? "text-yellow-400" : "text-red-400");
+
+                                          return (
+                                            <div key={qs.id} className="p-3 rounded-lg bg-secondary/30 border border-border/50">
+                                              <div className="flex items-start justify-between gap-2 mb-2">
+                                                <p className="text-xs leading-relaxed flex-1">{qText}</p>
+                                                <span className={`text-xs font-bold shrink-0 ${scoreColor}`}>
+                                                  {isKnowledgeTest ? (isCorrect ? "✓" : "✗") : `${qs.adjusted}/${maxScore}`}
+                                                </span>
+                                              </div>
+                                              {!isKnowledgeTest && (
+                                                <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-2">
+                                                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                                                </div>
+                                              )}
+                                              <div className="text-[11px] space-y-1">
+                                                <div className="flex gap-1.5">
+                                                  <span className="text-muted-foreground/70 shrink-0">
+                                                    {isKz ? "Жауап:" : "Ответ:"}
+                                                  </span>
+                                                  <span className="text-muted-foreground">{chosenLabel}</span>
+                                                </div>
+                                                {isKnowledgeTest && !isCorrect && (
+                                                  <div className="flex gap-1.5">
+                                                    <span className="text-green-400 shrink-0">{isKz ? "Дұрыс:" : "Верно:"}</span>
+                                                    <span className="text-muted-foreground">{bestLabel}</span>
+                                                  </div>
+                                                )}
+                                                {!isKnowledgeTest && !isCorrect && (
+                                                  <div className="flex gap-1.5">
+                                                    <span className="text-primary/70 shrink-0">{isKz ? "Ең жақсы:" : "Лучший:"}</span>
+                                                    <span className="text-muted-foreground">{bestLabel}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+
+                        // Fallback: general categories from DB columns
                         const categories = [
                           { key: "cognitive_score" as const, cat: "cognitive" as const },
                           { key: "soft_score" as const, cat: "soft" as const },
@@ -404,20 +584,12 @@ const ProfilePage = () => {
                             {categories.map(({ key, cat }) => {
                               const score = selectedTest[key];
                               const level = getLevel(score);
-                              const catResult = full?.categories.find(c => c.category === cat);
                               return (
                                 <div key={cat} className="p-4 rounded-lg bg-card border border-border">
                                   <div className="flex justify-between items-center mb-1">
                                     <span className="text-sm font-medium">{t.categories[cat]}</span>
                                     <span className={`text-sm font-bold ${level.color}`}>{score}%</span>
                                   </div>
-                                  {catResult && (
-                                    <div className="mb-2">
-                                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                                        {t.results.skillLevel}: {getSkillLevelLabel(catResult.level)}
-                                      </span>
-                                    </div>
-                                  )}
                                   <div className="h-2 rounded-full bg-secondary overflow-hidden">
                                     <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />
                                   </div>
@@ -543,10 +715,18 @@ const ProfilePage = () => {
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-semibold text-foreground">
-                                  {new Date(test.completed_at).toLocaleDateString()} -{" "}
-                                  {new Date(test.completed_at).toLocaleTimeString()}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-foreground">
+                                    {new Date(test.completed_at).toLocaleDateString()} -{" "}
+                                    {new Date(test.completed_at).toLocaleTimeString()}
+                                  </p>
+                                  {(() => {
+                                    const tt = (test.answers as any)?._test_type || "general";
+                                    const label = tt === "physics" ? (isKz ? "Физика" : "Физика") : tt === "infocomm" ? (isKz ? "Инфокомм" : "Инфокомм") : (isKz ? "Жалпы" : "Общий");
+                                    const color = tt === "physics" ? "bg-cyan-500/10 text-cyan-500" : tt === "infocomm" ? "bg-violet-500/10 text-violet-500" : "bg-primary/10 text-primary";
+                                    return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${color}`}>{label}</span>;
+                                  })()}
+                                </div>
                                 <p className="text-sm text-muted-foreground mt-1">
                                   {t.categories.cognitive}: {test.cognitive_score}% | {t.categories.soft}: {test.soft_score}% | {t.categories.professional}: {test.professional_score}%
                                 </p>
@@ -569,9 +749,467 @@ const ProfilePage = () => {
               )}
             </TabsContent>
           )}
+
+          {/* Trainers Tab */}
+          {role === "student" && (
+            <TabsContent value="trainers">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                {trainersLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                  </div>
+                ) : trainerAttempts.length === 0 ? (
+                  <Card className="border-border bg-card">
+                    <CardContent className="py-12 text-center">
+                      <p className="text-muted-foreground mb-4">{t.trainers.noAttempts}</p>
+                      <Button asChild><a href="/trainers">{t.trainers.start}</a></Button>
+                    </CardContent>
+                  </Card>
+                ) : selectedTrainer ? (() => {
+                  const trainerLabels: Record<TrainerType, string> = {
+                    sbi_feedback: t.trainers.sbiTitle,
+                    conflict_resolution: t.trainers.conflictTitle,
+                    public_speaking: t.trainers.speakingTitle,
+                  };
+                  const trainerLinks: Record<TrainerType, string> = {
+                    sbi_feedback: "/trainers/sbi-feedback",
+                    conflict_resolution: "/trainers/conflict-resolution",
+                    public_speaking: "/trainers/public-speaking",
+                  };
+                  const isKz = lang === "kz";
+                  const attempts = trainerAttempts.filter(a => a.trainer_type === selectedTrainer);
+                  const best = Math.max(...attempts.map(a => Math.round((a.score / a.max_score) * 100)), 0);
+
+                  return (
+                    <div>
+                      <button onClick={() => setSelectedTrainer(null)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
+                        <ArrowLeft size={16} /> {t.trainers.back}
+                      </button>
+
+                      <h3 className="font-display text-xl font-bold mb-4">{trainerLabels[selectedTrainer]}</h3>
+
+                      {/* Best score + attempt count */}
+                      <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="p-4 rounded-xl bg-card-gradient border border-border text-center">
+                          <div className="text-xs text-muted-foreground mb-1">{t.trainers.bestResult}</div>
+                          <div className={`text-2xl font-display font-bold ${best >= 70 ? "text-green-400" : best >= 40 ? "text-yellow-400" : "text-destructive"}`}>{best}%</div>
+                        </div>
+                        <div className="p-4 rounded-xl bg-card-gradient border border-border text-center">
+                          <div className="text-xs text-muted-foreground mb-1">{t.trainers.attempts}</div>
+                          <div className="text-2xl font-display font-bold text-foreground">{attempts.length}</div>
+                        </div>
+                      </div>
+
+                      {/* Score progress over attempts */}
+                      {attempts.length > 1 && (
+                        <div className="p-4 rounded-xl bg-card-gradient border border-border mb-6">
+                          <div className="text-xs text-muted-foreground mb-3">{t.trainers.bestResult}</div>
+                          <div className="flex items-end gap-1.5 h-20">
+                            {[...attempts].reverse().map((a, i) => {
+                              const pct = Math.round((a.score / a.max_score) * 100);
+                              return (
+                                <div key={a.id} className="flex-1 flex flex-col items-center gap-1">
+                                  <span className="text-[10px] text-muted-foreground">{pct}%</span>
+                                  <div
+                                    className={`w-full rounded-t ${pct >= 70 ? "bg-green-500" : pct >= 40 ? "bg-yellow-500" : "bg-destructive"}`}
+                                    style={{ height: `${Math.max(pct * 0.7, 4)}px` }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Dynamic improvement tips based on latest attempt */}
+                      <div className="p-5 rounded-xl bg-primary/5 border border-primary/20 mb-6">
+                        <h4 className="font-display font-semibold text-sm mb-3 text-primary">{t.trainers.improveTips}</h4>
+                        <ul className="space-y-2">
+                          {(() => {
+                            const latest = attempts[0];
+                            const answers = (latest?.answers || {}) as Record<string, any>;
+                            const dynamicTips: string[] = [];
+
+                            if (selectedTrainer === "sbi_feedback") {
+                              const scores = (answers.scores || []) as { situation: number; behavior: number; impact: number }[];
+                              if (scores.length > 0) {
+                                const avgS = Math.round(scores.reduce((s, r) => s + r.situation, 0) / scores.length);
+                                const avgB = Math.round(scores.reduce((s, r) => s + r.behavior, 0) / scores.length);
+                                const avgI = Math.round(scores.reduce((s, r) => s + r.impact, 0) / scores.length);
+                                dynamicTips.push(avgS < 50 ? t.trainers.sbiSituationWeak : t.trainers.sbiSituationGood);
+                                dynamicTips.push(avgB < 50 ? t.trainers.sbiBehaviorWeak : t.trainers.sbiBehaviorGood);
+                                dynamicTips.push(avgI < 50 ? t.trainers.sbiImpactWeak : t.trainers.sbiImpactGood);
+                              }
+                            } else if (selectedTrainer === "conflict_resolution") {
+                              const pct = latest ? Math.round((latest.score / latest.max_score) * 100) : 0;
+                              if (pct < 40) dynamicTips.push(t.trainers.conflictLow);
+                              else if (pct < 70) dynamicTips.push(t.trainers.conflictMid);
+                              else dynamicTips.push(t.trainers.conflictHigh);
+                            } else if (selectedTrainer === "public_speaking") {
+                              const checked = (answers.checkedItems || []) as number[];
+                              const missing = rubricItems.filter(r => !checked.includes(r.id));
+                              if (missing.length === 0) {
+                                dynamicTips.push(t.trainers.speakingAllGood);
+                              } else {
+                                const missingNames = missing.map(r => isKz ? r.textKz : r.text).join("; ");
+                                dynamicTips.push(t.trainers.speakingMissing.replace("{items}", missingNames));
+                              }
+                            }
+
+                            return dynamicTips.map((tip, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                <span className={`mt-0.5 ${tip.includes("✓") || tip.includes("отлично") || tip.includes("тамаша") || tip.includes("хорош") || tip.includes("жақсы") ? "text-green-400" : "text-primary"}`}>•</span>
+                                {tip}
+                              </li>
+                            ));
+                          })()}
+                        </ul>
+                      </div>
+
+                      {/* Attempt history */}
+                      <h4 className="font-display font-semibold text-sm mb-3">{t.trainers.lastAttempt}</h4>
+                      <div className="space-y-2 mb-6">
+                        {attempts.map((a) => {
+                          const pct = Math.round((a.score / a.max_score) * 100);
+                          return (
+                            <div key={a.id} className="p-3 rounded-lg bg-secondary/30 border border-border flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">{new Date(a.completed_at).toLocaleString()}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{a.score}/{a.max_score}</span>
+                                <span className={`font-bold text-sm ${pct >= 70 ? "text-green-400" : pct >= 40 ? "text-yellow-400" : "text-destructive"}`}>{pct}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <Button className="w-full" asChild>
+                        <a href={trainerLinks[selectedTrainer]}>{t.trainers.tryAgain}</a>
+                      </Button>
+                    </div>
+                  );
+                })() : (
+                  <div className="space-y-4">
+                    {(["sbi_feedback", "conflict_resolution", "public_speaking"] as TrainerType[]).map((type) => {
+                      const trainerLabels: Record<TrainerType, string> = {
+                        sbi_feedback: t.trainers.sbiTitle,
+                        conflict_resolution: t.trainers.conflictTitle,
+                        public_speaking: t.trainers.speakingTitle,
+                      };
+                      const trainerDescs: Record<TrainerType, string> = {
+                        sbi_feedback: t.trainers.sbiDesc,
+                        conflict_resolution: t.trainers.conflictDesc,
+                        public_speaking: t.trainers.speakingDesc,
+                      };
+                      const trainerColors: Record<TrainerType, string> = {
+                        sbi_feedback: "bg-blue-500/10 text-blue-400",
+                        conflict_resolution: "bg-red-500/10 text-red-400",
+                        public_speaking: "bg-violet-500/10 text-violet-400",
+                      };
+                      const trainerBorders: Record<TrainerType, string> = {
+                        sbi_feedback: "hover:border-blue-500/30",
+                        conflict_resolution: "hover:border-red-500/30",
+                        public_speaking: "hover:border-violet-500/30",
+                      };
+                      const attempts = trainerAttempts.filter(a => a.trainer_type === type);
+                      const best = attempts.length > 0
+                        ? Math.max(...attempts.map(a => Math.round((a.score / a.max_score) * 100)))
+                        : null;
+
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => setSelectedTrainer(type)}
+                          className={`w-full text-left p-5 rounded-xl bg-card-gradient border border-border ${trainerBorders[type]} transition-all duration-200 shadow-card cursor-pointer`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${trainerColors[type]}`}>
+                              {trainerLabels[type]}
+                            </span>
+                            {best !== null && (
+                              <div className="flex items-center gap-2">
+                                <Trophy size={14} className="text-primary" />
+                                <span className={`font-bold text-sm ${best >= 70 ? "text-green-400" : best >= 40 ? "text-yellow-400" : "text-destructive"}`}>{best}%</span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2">{trainerDescs[type]}</p>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{attempts.length} {t.trainers.attempts}</span>
+                            {attempts.length > 0 && (
+                              <span>{t.trainers.lastAttempt}: {new Date(attempts[0].completed_at).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            </TabsContent>
+          )}
+
+          {/* Cases Tab */}
+          {role === "student" && (
+            <TabsContent value="cases">
+              {selectedCase ? (
+                // Case Detail View
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                  <Card className="border-border bg-card">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="font-display text-2xl">
+                            {isKz ? selectedCase.caseTitleKz : selectedCase.caseTitle}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {t.profileCases?.date || "Дата"}: {new Date(selectedCase.completedAt).toLocaleDateString()}
+                          </p>
+                          <div className="mt-2">
+                            <RoleBadge role={selectedCase.role} isKz={isKz} />
+                          </div>
+                        </div>
+                        <Button variant="ghost" onClick={() => setSelectedCase(null)} size="sm" className="gap-2">
+                          <ArrowLeft size={16} /> {t.profile.back}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Solution score */}
+                      {selectedCase.solutionScore !== null && (
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 text-center">
+                          <div className="text-5xl font-display font-bold text-gradient mb-2">
+                            {selectedCase.solutionScore}%
+                          </div>
+                          <p className="text-muted-foreground">{t.profileCases?.solutionScore || "Балл за решение"}</p>
+                        </div>
+                      )}
+
+                      {/* 4 criteria feedback */}
+                      {selectedCase.peerAvg !== null && (
+                        <div className="space-y-4">
+                          {([
+                            { key: "communication", label: "Communication", labelRu: "Коммуникация", labelKz: "Коммуникация", peer: selectedCase.peerCommunication, self: selectedCase.selfCommunication },
+                            { key: "teamwork", label: "Teamwork", labelRu: "Командная работа", labelKz: "Командалық жұмыс", peer: selectedCase.peerTeamwork, self: selectedCase.selfTeamwork },
+                            { key: "leadership", label: "Leadership", labelRu: "Лидерство", labelKz: "Көшбасшылық", peer: selectedCase.peerLeadership, self: selectedCase.selfLeadership },
+                            { key: "problem_solving", label: "Problem Solving", labelRu: "Решение проблем", labelKz: "Мәселені шешу", peer: selectedCase.peerProblemSolving, self: selectedCase.selfProblemSolving },
+                          ] as const).map((criterion, idx) => {
+                            const gap = criterion.peer !== null && criterion.self !== null
+                              ? Math.abs(criterion.peer - criterion.self)
+                              : null;
+                            const gapColor = gap !== null
+                              ? gap <= 0.5 ? "text-green-400" : gap <= 1.0 ? "text-yellow-400" : "text-destructive"
+                              : "";
+                            return (
+                              <motion.div
+                                key={criterion.key}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.08 }}
+                                className="p-4 rounded-xl bg-card-gradient border border-border"
+                              >
+                                <div className="flex justify-between items-center mb-3">
+                                  <span className="text-sm font-semibold">
+                                    {isKz ? criterion.labelKz : criterion.labelRu}
+                                  </span>
+                                  {gap !== null && (
+                                    <span className={`text-xs font-medium ${gapColor}`}>
+                                      {t.profileCases?.gap || "Разрыв"}: {gap.toFixed(1)}
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Peer score bar */}
+                                {criterion.peer !== null && (
+                                  <div className="mb-2">
+                                    <div className="flex justify-between text-xs mb-1">
+                                      <span className="text-muted-foreground">{t.profileCases?.peerScore || "Оценка команды"}</span>
+                                      <span className="font-medium">{criterion.peer.toFixed(1)} / 5</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                                      <div className="h-full rounded-full bg-primary" style={{ width: `${(criterion.peer / 5) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Self score bar */}
+                                {criterion.self !== null && (
+                                  <div>
+                                    <div className="flex justify-between text-xs mb-1">
+                                      <span className="text-muted-foreground">{t.profileCases?.selfScore || "Самооценка"}</span>
+                                      <span className="font-medium">{criterion.self.toFixed(1)} / 5</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                                      <div className="h-full rounded-full bg-yellow-500/70" style={{ width: `${(criterion.self / 5) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                )}
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* No feedback message */}
+                      {selectedCase.peerAvg === null && selectedCase.solutionScore === null && (
+                        <div className="text-center py-6 text-muted-foreground">
+                          {isKz ? "Бағалау деректері жоқ" : "Нет данных оценки"}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ) : (
+                // Cases List View
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                  {casesLoading ? (
+                    <Card className="border-border bg-card">
+                      <CardContent className="py-8 text-center text-muted-foreground">
+                        {t.dashboard?.loading || "Loading..."}
+                      </CardContent>
+                    </Card>
+                  ) : caseHistory.length === 0 ? (
+                    <Card className="border-border bg-card">
+                      <CardContent className="py-8 text-center">
+                        <p className="text-muted-foreground mb-4">{t.profileCases?.noCases || "Кейсы ещё не пройдены"}</p>
+                        <Button asChild>
+                          <a href="/cases">{t.nav.cases}</a>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Stats Cards */}
+                      {(() => {
+                        const stats = computeStats(caseHistory);
+                        const roleLabel = stats.mostCommonRole && (stats.mostCommonRole as SimRole) in ROLE_DEFINITIONS
+                          ? (isKz ? ROLE_DEFINITIONS[stats.mostCommonRole as SimRole].labelKz : ROLE_DEFINITIONS[stats.mostCommonRole as SimRole].label)
+                          : "—";
+                        return (
+                          <div className="grid grid-cols-3 gap-4">
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
+                              <Card className="border-border bg-card">
+                                <CardContent className="p-4 text-center">
+                                  <Briefcase className="h-5 w-5 text-primary mx-auto mb-2" />
+                                  <div className="text-2xl font-display font-bold">{stats.totalCases}</div>
+                                  <div className="text-xs text-muted-foreground">{t.profileCases?.totalCases || "Кейсов пройдено"}</div>
+                                </CardContent>
+                              </Card>
+                            </motion.div>
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+                              <Card className="border-border bg-card">
+                                <CardContent className="p-4 text-center">
+                                  <Star className="h-5 w-5 text-primary mx-auto mb-2" />
+                                  <div className="text-2xl font-display font-bold">
+                                    {stats.avgFeedbackScore > 0 ? stats.avgFeedbackScore.toFixed(1) : "—"}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{t.profileCases?.avgFeedback || "Средняя оценка 360°"}</div>
+                                </CardContent>
+                              </Card>
+                            </motion.div>
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
+                              <Card className="border-border bg-card">
+                                <CardContent className="p-4 text-center">
+                                  <Users className="h-5 w-5 text-primary mx-auto mb-2" />
+                                  <div className="text-2xl font-display font-bold">{roleLabel}</div>
+                                  <div className="text-xs text-muted-foreground">{t.profileCases?.commonRole || "Частая роль"}</div>
+                                </CardContent>
+                              </Card>
+                            </motion.div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Case list */}
+                      <Card className="border-border bg-card">
+                        <CardHeader>
+                          <CardTitle className="font-display text-2xl">{t.profileCases?.tab || "Кейсы"}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {caseHistory.map((item, index) => (
+                              <motion.button
+                                key={item.sessionId}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                onClick={() => setSelectedCase(item)}
+                                className="w-full p-4 rounded-lg border border-border bg-card hover:border-primary/40 hover:bg-card/80 transition-all text-left"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-semibold text-foreground">
+                                      {isKz ? item.caseTitleKz : item.caseTitle}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <RoleBadge role={item.role} isKz={isKz} />
+                                      <span className="text-xs text-muted-foreground">
+                                        {new Date(item.completedAt).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    {item.peerAvg !== null ? (
+                                      <>
+                                        <div className="text-2xl font-bold text-primary">
+                                          {item.peerAvg.toFixed(1)}
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">/ 5</span>
+                                      </>
+                                    ) : item.solutionScore !== null ? (
+                                      <>
+                                        <div className={`text-2xl font-bold ${getLevel(item.solutionScore).color}`}>
+                                          {item.solutionScore}%
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">—</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.button>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
+
+      <ProfileEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        user={user}
+        profile={profile}
+        onSaved={() => {
+          setEditDialogOpen(false);
+          window.location.reload();
+        }}
+      />
     </div>
+  );
+};
+
+const ROLE_BADGE_COLORS: Record<string, string> = {
+  leader: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  analyst: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  creative: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  presenter: "bg-green-500/20 text-green-400 border-green-500/30",
+  member: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+};
+
+const RoleBadge = ({ role, isKz }: { role: string; isKz: boolean }) => {
+  const colorClass = ROLE_BADGE_COLORS[role] || ROLE_BADGE_COLORS.member;
+  const label = (role as SimRole) in ROLE_DEFINITIONS
+    ? (isKz ? ROLE_DEFINITIONS[role as SimRole].labelKz : ROLE_DEFINITIONS[role as SimRole].label)
+    : role;
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${colorClass}`}>
+      {label}
+    </span>
   );
 };
 

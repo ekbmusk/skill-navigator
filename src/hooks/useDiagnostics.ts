@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { questions as generalQuestions, categoryLabels } from "@/data/diagnosticsQuestions";
+import { physicsQuestions, physicsCategoryLabels } from "@/data/physicsQuestions";
+import { infoCommQuestions, infoCommCategoryLabelsRu } from "@/data/infoCommQuestions";
 
 export interface DiagnosticsScore {
     category: string;
@@ -142,7 +145,8 @@ export const useDiagnostics = () => {
                 .from("diagnostics_results")
                 .select("*")
                 .eq("user_id", user.id)
-                .order("completed_at", { ascending: false });
+                .order("completed_at", { ascending: false })
+                .limit(50);
 
             if (supabaseError) {
                 setError(supabaseError.message);
@@ -193,25 +197,93 @@ export const useDiagnostics = () => {
      */
     const generateCSV = (result: Tables<"diagnostics_results">, userName: string = "User"): string => {
         const timestamp = new Date(result.completed_at).toLocaleString();
+        const answers = (result.answers || {}) as Record<string, any>;
+        const testType = answers._test_type || "general";
 
-        const headers = ["Категория", "Балл"];
-        const rows = [
-            ["Когнитивті дағдылар", result.cognitive_score],
-            ["Soft Skills", result.soft_score],
-            ["Кәсіби дағдылар", result.professional_score],
-            ["Бейімделгіштік", result.adaptability_score],
-            ["Жалпы балл", result.average_score],
-        ];
+        // Pick question set and category labels based on test type
+        const questionSet = testType === "physics"
+            ? physicsQuestions
+            : testType === "infocomm"
+                ? infoCommQuestions
+                : generalQuestions;
 
-        const csv = [
-            `Диагностика нәтижелері - ${userName}`,
+        const catLabels = testType === "physics"
+            ? physicsCategoryLabels
+            : testType === "infocomm"
+                ? infoCommCategoryLabelsRu
+                : categoryLabels;
+
+        const testLabel = testType === "physics"
+            ? "Физика"
+            : testType === "infocomm"
+                ? "Ақпараттық-коммуникативтік"
+                : "Жалпы дағдылар";
+
+        // Escape CSV value (wrap in quotes if contains comma or quote)
+        const esc = (v: string) => {
+            if (v.includes(",") || v.includes('"') || v.includes("\n")) {
+                return `"${v.replace(/"/g, '""')}"`;
+            }
+            return v;
+        };
+
+        // Section 1: Summary
+        const summaryRows = [
+            `Диагностика нәтижелері - ${esc(userName)}`,
+            `Тест түрі: ${testLabel}`,
             `Уақыты: ${timestamp}`,
             "",
-            headers.join(","),
-            ...rows.map((row) => row.join(",")),
-        ].join("\n");
+            "Категория,Балл",
+        ];
 
-        return csv;
+        // Map DB scores to category labels
+        const scoreMapping: [string, number][] = testType === "physics"
+            ? [
+                [catLabels["mechanics" as keyof typeof catLabels] || "Механика", result.cognitive_score],
+                [catLabels["thermodynamics" as keyof typeof catLabels] || "Термодинамика", result.soft_score],
+                [catLabels["electromagnetism" as keyof typeof catLabels] || "Электромагнетизм", result.professional_score],
+                [catLabels["optics_waves" as keyof typeof catLabels] || "Оптика", result.adaptability_score],
+            ]
+            : [
+                [catLabels["cognitive" as keyof typeof catLabels] || "Когнитивті", result.cognitive_score],
+                [catLabels["soft" as keyof typeof catLabels] || "Soft Skills", result.soft_score],
+                [catLabels["professional" as keyof typeof catLabels] || "Кәсіби", result.professional_score],
+                [catLabels["adaptability" as keyof typeof catLabels] || "Бейімделгіштік", result.adaptability_score],
+            ];
+
+        for (const [label, score] of scoreMapping) {
+            summaryRows.push(`${esc(label)},${score}`);
+        }
+        summaryRows.push(`Жалпы балл,${result.average_score}`);
+
+        // Section 2: Question-by-question breakdown
+        const detailRows = [
+            "",
+            "",
+            "№,Категория,Сұрақ,Таңдалған жауап,Балл,Макс балл,Ең жақсы жауап",
+        ];
+
+        for (const q of questionSet) {
+            const chosenScore = answers[String(q.id)];
+            if (chosenScore === undefined) continue;
+
+            const catLabel = catLabels[q.category as keyof typeof catLabels] || q.category;
+            const chosenOption = q.options.find((o: any) => o.score === chosenScore);
+            const chosenLabel = chosenOption
+                ? (chosenOption as any).labelKz || (chosenOption as any).label || `Балл ${chosenScore}`
+                : `Балл ${chosenScore}`;
+            const maxScore = Math.max(...q.options.map((o: any) => o.score));
+            const bestOption = q.options.find((o: any) => o.score === maxScore);
+            const bestLabel = bestOption
+                ? (bestOption as any).labelKz || (bestOption as any).label || `Балл ${maxScore}`
+                : `Балл ${maxScore}`;
+
+            detailRows.push(
+                `${q.id},${esc(catLabel)},${esc((q as any).textKz || q.text)},${esc(chosenLabel)},${chosenScore},${maxScore},${esc(bestLabel)}`
+            );
+        }
+
+        return [...summaryRows, ...detailRows].join("\n");
     };
 
     /**
@@ -219,7 +291,7 @@ export const useDiagnostics = () => {
      */
     const downloadAsCSV = (result: Tables<"diagnostics_results">, userName: string = "User") => {
         const csv = generateCSV(result, userName);
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
 

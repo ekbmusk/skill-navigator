@@ -412,17 +412,31 @@ export const useSimulator = () => {
         (profiles || []).map((p: any) => [p.user_id, p.full_name])
       );
 
+      // Separate self-assessments from peer reviews
+      const selfMap = new Map<string, any>();
+      for (const fb of data) {
+        if (fb.reviewer_id === fb.reviewee_id) {
+          selfMap.set(fb.reviewee_id, fb);
+        }
+      }
+
       const summaries: FeedbackSummary[] = [];
       for (const [userId, feedbacks] of grouped) {
-        const count = feedbacks.length;
+        // Only count peer reviews (exclude self-assessment from averages)
+        const peerFeedbacks = feedbacks.filter((f: any) => f.reviewer_id !== f.reviewee_id);
+        const count = peerFeedbacks.length;
+
         const avg = (field: string) =>
-          feedbacks.reduce((s: number, f: any) => s + (f[field] || 0), 0) /
-          count;
+          count > 0
+            ? peerFeedbacks.reduce((s: number, f: any) => s + (f[field] || 0), 0) / count
+            : 0;
 
         const avgComm = avg("communication");
         const avgTeam = avg("teamwork");
         const avgLead = avg("leadership");
         const avgPS = avg("problem_solving");
+
+        const selfFb = selfMap.get(userId);
 
         summaries.push({
           user_id: userId,
@@ -432,8 +446,16 @@ export const useSimulator = () => {
           avg_leadership: Math.round(avgLead * 10) / 10,
           avg_problem_solving: Math.round(avgPS * 10) / 10,
           total_avg:
-            Math.round(((avgComm + avgTeam + avgLead + avgPS) / 4) * 10) / 10,
+            count > 0
+              ? Math.round(((avgComm + avgTeam + avgLead + avgPS) / 4) * 10) / 10
+              : 0,
           count,
+          ...(selfFb && {
+            self_communication: selfFb.communication,
+            self_teamwork: selfFb.teamwork,
+            self_leadership: selfFb.leadership,
+            self_problem_solving: selfFb.problem_solving,
+          }),
         });
       }
 

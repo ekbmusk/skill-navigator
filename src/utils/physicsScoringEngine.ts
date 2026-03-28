@@ -15,9 +15,11 @@ import type { PhysicsCategory } from "@/data/physicsQuestions";
 import { runAntiCheatDetection, applyAntiCheatPenalty } from "./antiCheatDetection";
 import type { TimingData, AntiCheatReport, AntiCheatQuestionConfig } from "./antiCheatDetection";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { getSkillLevel, variance, average, calculateRawConfidenceWithDiversity } from "./scoringHelpers";
+import type { SkillLevel } from "./scoringHelpers";
+export type PhysicsSkillLevel = SkillLevel;
 
-export type PhysicsSkillLevel = "beginner" | "basic" | "advanced" | "expert";
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PhysicsProfile =
   | "mechanics_expert"
@@ -66,27 +68,6 @@ const physicsAntiCheatConfig: AntiCheatQuestionConfig = {
   getQuestionsByCategory: getPhysicsQuestionsByCategory as () => Record<string, { id: number; isReversed: boolean }[]>,
 };
 
-// ─── Level Thresholds ────────────────────────────────────────────────────────
-
-function getSkillLevel(score: number): PhysicsSkillLevel {
-  if (score >= 75) return "expert";
-  if (score >= 50) return "advanced";
-  if (score >= 25) return "basic";
-  return "beginner";
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function variance(arr: number[]): number {
-  if (arr.length < 2) return 0;
-  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-  return arr.reduce((sum, x) => sum + (x - mean) ** 2, 0) / arr.length;
-}
-
-function average(arr: number[]): number {
-  return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-}
-
 // ─── Category Scoring ────────────────────────────────────────────────────────
 
 function scoreCategoryWeighted(
@@ -96,7 +77,7 @@ function scoreCategoryWeighted(
   const qs = getPhysicsQuestionsByCategory()[category] ?? [];
 
   const questionScores = qs.map(q => {
-    const raw = answers[q.id] ?? 1;
+    const raw = answers[q.id] ?? 0;
     const adjusted = applyPhysicsReversal(raw, q.isReversed);
     return { id: q.id, adjusted, weight: q.weight };
   });
@@ -116,25 +97,6 @@ function scoreCategoryWeighted(
     internalVariance: Math.round(variance(questionScores.map(q => q.adjusted)) * 100) / 100,
     weightedContribution: rawScore * categoryWeight,
   };
-}
-
-// ─── Confidence ──────────────────────────────────────────────────────────────
-
-function calculateRawConfidence(
-  answers: Record<number, number>,
-  categories: PhysicsCategoryResult[]
-): number {
-  const total = physicsQuestions.length;
-  const answered = Object.keys(answers).length;
-
-  const completeness = answered / total;
-  const avgVariance = average(categories.map(c => c.internalVariance));
-  const varianceFactor = Math.min(1, avgVariance / 1.2);
-  const uniqueValues = new Set(Object.values(answers)).size;
-  const diversityFactor = Math.min(1, uniqueValues / 4);
-
-  const confidence = completeness * 0.55 + varianceFactor * 0.30 + diversityFactor * 0.15;
-  return Math.round(Math.min(1, confidence) * 100) / 100;
 }
 
 // ─── Profile Pattern ─────────────────────────────────────────────────────────
@@ -181,7 +143,9 @@ export function runPhysicsScoringEngine(
   ) / 10;
 
   // 4. Confidence
-  const rawConfidence = calculateRawConfidence(answers, categories);
+  const rawConfidence = calculateRawConfidenceWithDiversity(
+    Object.keys(answers).length, physicsQuestions.length, categories, answers
+  );
   const adjustedConfidence = applyAntiCheatPenalty(rawConfidence, antiCheat);
 
   // 5. Profile

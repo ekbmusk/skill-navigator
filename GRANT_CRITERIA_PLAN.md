@@ -41,7 +41,14 @@ New migration `supabase/migrations/20260326_resources.sql`:
 
 ---
 
-## Phase 2: Education-Themed Cases ✅ DONE (2026-03-28)
+## Phase 2: Education-Themed Cases + Case Improvements ✅ DONE (2026-03-28)
+
+### Additional improvements implemented:
+- ✅ Self-assessment in 360° feedback (rate yourself + gap analysis vs peer ratings)
+- ✅ Case history tab on ProfilePage (completed cases, roles, feedback scores, drill-down)
+- ✅ Teacher dashboard: Cases tab (case metrics per student, solution scoring 0-100)
+- ✅ Migration `20260328_case_improvements.sql` (self-review RLS, teacher scoring policies)
+
 **Tasks**: ID8 (Школьный проект по физике ✅), ID20 (Лабораторная работа ✅), ID10 (Адаптация первокурсника ✅), ID5 (Межкультурный конфликт ✅), ID6 (Хакатон ✅)
 **Criteria**: 2.11 — data-only, no new code needed
 
@@ -67,8 +74,8 @@ New migration `supabase/migrations/20260327_education_cases.sql`:
 
 ---
 
-## Phase 3: Skill Trainers (~5 days)
-**Tasks**: ID2 (Конструктивная обратная связь 🔴), ID12 (Разрешение конфликтов 🔴), ID15 (Публичное выступление 🟡)
+## Phase 3: Skill Trainers ✅ DONE (2026-03-28)
+**Tasks**: ID2 (Конструктивная обратная связь ✅), ID12 (Разрешение конфликтов ✅), ID15 (Публичное выступление ✅)
 **Criteria**: 2.9
 
 ### Database

@@ -425,6 +425,39 @@ export type Database = {
           },
         ]
       }
+      trainer_attempts: {
+        Row: {
+          answers: Json
+          completed_at: string | null
+          id: string
+          level: number
+          max_score: number
+          score: number
+          trainer_type: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string | null
+          id?: string
+          level?: number
+          max_score?: number
+          score?: number
+          trainer_type: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string | null
+          id?: string
+          level?: number
+          max_score?: number
+          score?: number
+          trainer_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

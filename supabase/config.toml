@@ -32,3 +32,6 @@ enabled = false
 # Раскомментируйте и добавьте ваши credentials после создания OAuth приложения в Google Cloud Console
 # client_id = "your-client-id.apps.googleusercontent.com"
 # secret = "your-client-secret"
+
+[analytics]
+enabled = false

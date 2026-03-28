@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import DiagnosticsResults from "@/components/DiagnosticsResults";
 import Navbar from "@/components/Navbar";
 import RankingQuestion from "@/components/RankingQuestion";
@@ -13,17 +13,44 @@ import { getResultsCompat } from "@/utils/scoringEngine";
 import type { TimingData } from "@/utils/antiCheatDetection";
 import { questions as allQuestions } from "@/data/diagnosticsQuestions";
 
+// Seeded shuffle — stable per question per test session
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const shuffled = [...arr];
+  let s = seed;
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    const j = s % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 const DiagnosticsPage = () => {
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [finished, setFinished] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [testStartTime] = useState(() => Date.now());
+  const [shuffleSeed] = useState(() => Math.floor(Math.random() * 1000000));
   const [questionTimestamps, setQuestionTimestamps] = useState<Record<number, number>>({ 0: Date.now() });
   const { t } = useLang();
   const { saveDiagnosticsResult } = useDiagnostics();
   const { toast } = useToast();
+
+  // Elapsed timer
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - testStartTime) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [testStartTime]);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${String(sec).padStart(2, "0")}`;
+  };
 
   // Record timestamp when a new question is first shown
   useEffect(() => {
@@ -50,7 +77,7 @@ const DiagnosticsPage = () => {
 
   const next = () => {
     if (currentQ < questions.length - 1) setCurrentQ((p) => p + 1);
-    else handleFinish();
+    else setShowConfirm(true);
   };
 
   const prev = () => {
@@ -107,21 +134,21 @@ const DiagnosticsPage = () => {
       if (result) {
         setFinished(true);
         toast({
-          title: "Сақталды",
-          description: "Сіздің диагностика нәтижелері сақталды",
+          title: t.diagnosticsToast.savedTitle,
+          description: t.diagnosticsToast.savedDesc,
         });
       } else {
         toast({
           variant: "destructive",
-          title: "Қате",
-          description: "Нәтижелерді сақтау барысында қате орын алды",
+          title: t.diagnosticsToast.errorTitle,
+          description: t.diagnosticsToast.errorDesc,
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Қате",
-        description: "Нәтижелерді сақтау барысында қате орын алды",
+        title: t.diagnosticsToast.errorTitle,
+        description: t.diagnosticsToast.errorDesc,
       });
     } finally {
       setSaving(false);
@@ -171,12 +198,13 @@ const DiagnosticsPage = () => {
       );
     }
 
-    // Default: single_choice
+    // Default: single_choice — shuffle options so position doesn't correlate with score
+    const shuffledOptions = seededShuffle(q.options, shuffleSeed + q.id);
     return (
       <>
         <h2 className="font-display text-2xl md:text-3xl font-bold mb-8">{q.text}</h2>
         <div className="space-y-3">
-          {q.options.map((opt, i) => {
+          {shuffledOptions.map((opt, i) => {
             const selected = answers[q.id] === opt.score;
             return (
               <button
@@ -209,7 +237,13 @@ const DiagnosticsPage = () => {
         <div className="mb-8">
           <div className="flex justify-between text-sm text-muted-foreground mb-2">
             <span>{questionOfText}</span>
-            <span>{Math.round(progress)}%</span>
+            <span className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <Clock size={14} />
+                {formatTime(elapsed)}
+              </span>
+              <span>{Math.round(progress)}%</span>
+            </span>
           </div>
           <div className="h-2 rounded-full bg-secondary overflow-hidden">
             <motion.div className="h-full rounded-full bg-primary" initial={false} animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
@@ -235,6 +269,42 @@ const DiagnosticsPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* Finish confirmation dialog */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card border border-border rounded-2xl p-8 max-w-md mx-4 shadow-card"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-primary" />
+              </div>
+              <h3 className="font-display text-lg font-semibold">{t.diagnosticsPage.confirmTitle}</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              {t.diagnosticsPage.confirmDesc
+                .replace("{answered}", String(Object.keys(answers).length))
+                .replace("{total}", String(questions.length))}
+            </p>
+            {Object.keys(answers).length < questions.length && (
+              <p className="text-xs text-destructive mb-4">
+                {t.diagnosticsPage.unanswered.replace("{count}", String(questions.length - Object.keys(answers).length))}
+              </p>
+            )}
+            <div className="flex gap-3 mt-6">
+              <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>
+                {t.diagnosticsPage.confirmCancel}
+              </Button>
+              <Button className="flex-1" onClick={() => { setShowConfirm(false); handleFinish(); }} disabled={saving}>
+                {saving ? "..." : t.diagnosticsPage.confirmSubmit}
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
