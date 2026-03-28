@@ -233,3 +233,19 @@
     stroke: hsl(220 12% 82%) !important;
   }
 }
+
+/* Floating card animations — lightweight CSS transforms */
+@keyframes float1 {
+  0%, 100% { transform: translateY(0) translateX(1rem); }
+  50% { transform: translateY(-12px) translateX(1rem); }
+}
+
+@keyframes float2 {
+  0%, 100% { transform: translateY(0) translateX(-0.5rem); }
+  50% { transform: translateY(-8px) translateX(-0.5rem); }
+}
+
+@keyframes float3 {
+  0%, 100% { transform: translateY(0) translateX(1.5rem); }
+  50% { transform: translateY(-15px) translateX(1.5rem); }
+}

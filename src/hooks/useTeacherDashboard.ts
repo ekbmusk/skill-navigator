@@ -130,7 +130,7 @@ export function useTeacherDashboard(): UseTeacherDashboardResult {
         const [trainerAttemptsRes, caseSolutionsCountRes] = await Promise.all([
           supabase
             .from("trainer_attempts" as any)
-            .select("user_id, type, score_percent")
+            .select("user_id, trainer_type, score, max_score")
             .in("user_id", studentIds),
           supabase
             .from("case_solutions")
@@ -153,11 +153,13 @@ export function useTeacherDashboard(): UseTeacherDashboardResult {
               bestSpeaking: 0,
             };
             entry.count += 1;
-            const score = (row.score_percent as number) ?? 0;
-            const type = (row.type as string) ?? "";
-            if (type === "sbi" && score > entry.bestSbi) entry.bestSbi = score;
-            if (type === "conflict" && score > entry.bestConflict) entry.bestConflict = score;
-            if (type === "speaking" && score > entry.bestSpeaking) entry.bestSpeaking = score;
+            const rawScore = (row.score as number) ?? 0;
+            const maxScore = (row.max_score as number) || 100;
+            const pct = Math.round((rawScore / maxScore) * 100);
+            const type = (row.trainer_type as string) ?? "";
+            if (type === "sbi_feedback" && pct > entry.bestSbi) entry.bestSbi = pct;
+            if (type === "conflict_resolution" && pct > entry.bestConflict) entry.bestConflict = pct;
+            if (type === "public_speaking" && pct > entry.bestSpeaking) entry.bestSpeaking = pct;
             trainerStatsMap.set(uid, entry);
           }
         }

@@ -1,70 +1,98 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, ChevronDown, Target, Users, Briefcase, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronDown, Brain, Users, Dumbbell, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useLang } from "@/i18n/LanguageContext";
 
-// ── Animated counter ─────────────────────────────────────────────────────────
+// ── Typing effect ────────────────────────────────────────────────────────────
 
-const AnimatedCounter = ({ target, label, icon: Icon }: { target: number; label: string; icon: React.ElementType }) => {
-  const [count, setCount] = useState(0);
+const TypedText = ({ text, speed = 35, delay = 800 }: { text: string; speed?: number; delay?: number }) => {
+  const [displayed, setDisplayed] = useState("");
   const [done, setDone] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const hasAnimated = useRef(false);
+  const started = useRef(false);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated.current) {
-          hasAnimated.current = true;
-          const steps = 40;
-          const increment = target / steps;
-          let current = 0;
-          const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-              setCount(target);
-              setDone(true);
-              clearInterval(timer);
-            } else {
-              setCount(Math.floor(current));
-            }
-          }, 1500 / steps);
+    if (started.current) return;
+    started.current = true;
+    let i = 0;
+    const timeout = setTimeout(() => {
+      const interval = setInterval(() => {
+        i++;
+        setDisplayed(text.slice(0, i));
+        if (i >= text.length) {
+          clearInterval(interval);
+          setDone(true);
         }
-      },
-      { threshold: 0.5 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [target]);
+      }, speed);
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [text, speed, delay]);
 
   return (
-    <div ref={ref} className="text-center">
-      <Icon className="text-accent mx-auto mb-2" size={18} />
-      <motion.div
-        className="text-4xl md:text-5xl font-display font-bold text-gradient"
-        animate={done ? { scale: [1.12, 1] } : {}}
-        transition={{ duration: 0.3 }}
-      >
-        {count}+
-      </motion.div>
-      <div className="text-sm text-muted-foreground mt-1 font-light tracking-wide">{label}</div>
-    </div>
+    <span>
+      {displayed}
+      {!done && <span className="animate-pulse text-primary">|</span>}
+    </span>
   );
 };
+
+// ── Feature card data ────────────────────────────────────────────────────────
+
+const FEATURES = [
+  {
+    icon: Brain,
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
+    borderHover: "hover:border-blue-500/30",
+    titleRu: "Диагностика",
+    titleKz: "Диагностика",
+    descRu: "3 типа тестов для оценки навыков",
+    descKz: "Дағдыларды бағалау үшін 3 түрлі тест",
+    stat: "15+",
+    floatClass: "animate-[float1_6s_ease-in-out_infinite]",
+    offset: "lg:translate-x-4",
+  },
+  {
+    icon: Users,
+    color: "text-green-400",
+    bg: "bg-green-500/10",
+    borderHover: "hover:border-green-500/30",
+    titleRu: "Кейсы",
+    titleKz: "Кейстер",
+    descRu: "Командные симуляции с 360° оценкой",
+    descKz: "360° бағалаумен командалық симуляциялар",
+    stat: "5+",
+    floatClass: "animate-[float2_8s_ease-in-out_infinite]",
+    offset: "lg:-translate-x-2",
+  },
+  {
+    icon: Dumbbell,
+    color: "text-purple-400",
+    bg: "bg-purple-500/10",
+    borderHover: "hover:border-purple-500/30",
+    titleRu: "Тренажёры",
+    titleKz: "Тренажерлер",
+    descRu: "Интерактивные упражнения на практике",
+    descKz: "Тәжірибедегі интерактивті жаттығулар",
+    stat: "3+",
+    floatClass: "animate-[float3_7s_ease-in-out_infinite]",
+    offset: "lg:translate-x-6",
+  },
+];
 
 // ── Main hero ────────────────────────────────────────────────────────────────
 
 const HeroSection = () => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const isKz = lang === "kz";
 
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
       {/* Background */}
       <div className="absolute inset-0 bg-background" />
 
-      {/* Two ambient orbs — CSS animation only, no JS */}
+      {/* Two ambient orbs — CSS only */}
       <div
         className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] rounded-full blur-[150px] animate-[pulse_12s_ease-in-out_infinite]"
         style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.07), hsl(270 60% 60% / 0.04), transparent 70%)" }}
@@ -74,7 +102,7 @@ const HeroSection = () => {
         style={{ background: "radial-gradient(circle, hsl(var(--accent) / 0.06), hsl(340 70% 65% / 0.03), transparent 70%)" }}
       />
 
-      {/* Dot grid — pure CSS */}
+      {/* Dot grid */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -85,7 +113,7 @@ const HeroSection = () => {
         }}
       />
 
-      {/* Diagonal accent band — pure CSS */}
+      {/* Diagonal accent band */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -95,7 +123,7 @@ const HeroSection = () => {
 
       {/* Content */}
       <div className="container relative z-10 px-4">
-        <div className="grid lg:grid-cols-12 gap-8 items-center min-h-[85vh]">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center min-h-[85vh]">
           {/* Left — main content */}
           <div className="lg:col-span-7">
             <motion.div
@@ -142,52 +170,76 @@ const HeroSection = () => {
                 </motion.span>
               </h1>
 
-              {/* Subtitle */}
-              <motion.p
-                className="mt-8 text-base md:text-lg text-muted-foreground max-w-lg leading-relaxed font-light"
+              {/* Typed subtitle */}
+              <motion.div
+                className="mt-8 text-base md:text-lg text-muted-foreground max-w-lg leading-relaxed font-light h-[3.5em]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.65 }}
+                transition={{ duration: 0.4, delay: 0.6 }}
               >
-                {t.hero.subtitle}
-              </motion.p>
+                <TypedText text={t.hero.subtitle} delay={1000} />
+              </motion.div>
 
               {/* CTA */}
               <motion.div
-                className="mt-10 flex flex-col sm:flex-row gap-4"
+                className="mt-8 flex flex-col sm:flex-row gap-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.8 }}
               >
-                <Button size="lg" className="text-base gap-2 h-13 px-8 shadow-glow group" asChild>
+                <Button size="lg" className="text-lg gap-2.5 h-14 px-10 shadow-glow group" asChild>
                   <Link to="/tests">
                     {t.hero.cta}
-                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="text-base h-13 px-8 border-border hover:bg-accent/5 hover:border-accent/30 hover:text-accent transition-all" asChild>
+                <Button size="lg" variant="outline" className="text-lg h-14 px-10 border-border hover:bg-accent/5 hover:border-accent/30 hover:text-accent transition-all" asChild>
                   <a href="#teachers">{t.hero.learnMore}</a>
                 </Button>
               </motion.div>
             </motion.div>
           </div>
 
-          {/* Right — stats column */}
-          <motion.div
-            className="lg:col-span-5 lg:pl-8"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-          >
-            <div className="relative">
-              <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
-              <div className="lg:pl-12 space-y-12">
-                <AnimatedCounter target={15} label={t.hero.statSkills} icon={Target} />
-                <AnimatedCounter target={500} label={t.hero.statStudents} icon={Users} />
-                <AnimatedCounter target={50} label={t.hero.statCases} icon={Briefcase} />
-              </div>
+          {/* Right — floating feature cards */}
+          <div className="lg:col-span-5 lg:pl-4">
+            <div className="space-y-5">
+              {FEATURES.map((f, i) => {
+                const Icon = f.icon;
+                return (
+                  <motion.div
+                    key={f.titleRu}
+                    initial={{ opacity: 0, x: 50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: 0.5 + i * 0.15, ease: "easeOut" }}
+                    className={`${f.floatClass} ${f.offset}`}
+                  >
+                    <div
+                      className={`p-5 rounded-2xl bg-card/60 backdrop-blur-xl border border-border/50 ${f.borderHover} hover:scale-[1.02] transition-all duration-300 cursor-default`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-xl ${f.bg} flex items-center justify-center shrink-0`}>
+                          <Icon className={`h-6 w-6 ${f.color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-display font-semibold text-sm text-foreground">
+                              {isKz ? f.titleKz : f.titleRu}
+                            </h3>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                              {f.stat}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                            {isKz ? f.descKz : f.descRu}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
 
