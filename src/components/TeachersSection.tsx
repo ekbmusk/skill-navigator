@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform } from "framer-motion";
+import { useRef } from "react";
 import { TrendingUp, Users, FileText, Bell } from "lucide-react";
 import { useLang } from "@/i18n/LanguageContext";
 import { OrbitalIcon, HexIcon, DiamondIcon, BlobIcon } from "@/components/BrandIcons";
@@ -19,6 +20,31 @@ const springTransition = (i: number) => ({
 
 const TeachersSection = () => {
   const { t } = useLang();
+  const sectionRef = useRef<HTMLElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const mouseX = useMotionValue(0.5);
+  const mouseY = useMotionValue(0.5);
+  const rotateX = useTransform(mouseY, [0, 1], [8, -8]);
+  const rotateY = useTransform(mouseX, [0, 1], [-8, 8]);
+
+  const handleSectionMouseMove = (e: React.MouseEvent) => {
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Calculate position relative to card center, with extended radius
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const radius = Math.max(rect.width, rect.height) * 1.5;
+    const dx = (e.clientX - centerX) / radius;
+    const dy = (e.clientY - centerY) / radius;
+    // Clamp to [-1, 1] range and map to [0, 1]
+    mouseX.set(0.5 + Math.max(-0.5, Math.min(0.5, dx)));
+    mouseY.set(0.5 + Math.max(-0.5, Math.min(0.5, dy)));
+  };
+
+  const handleSectionMouseLeave = () => {
+    mouseX.set(0.5);
+    mouseY.set(0.5);
+  };
 
   const items = [
     { icon: TrendingUp, title: t.teachersSection.analytics, desc: t.teachersSection.analyticsDesc },
@@ -28,7 +54,13 @@ const TeachersSection = () => {
   ];
 
   return (
-    <section id="teachers" className="py-24 md:py-32 relative overflow-hidden section-alt">
+    <section
+      id="teachers"
+      ref={sectionRef}
+      className="py-24 md:py-32 relative overflow-hidden section-alt"
+      onMouseMove={handleSectionMouseMove}
+      onMouseLeave={handleSectionMouseLeave}
+    >
       {/* Diagonal cut at top */}
       <div className="absolute top-0 left-0 w-full overflow-hidden leading-none rotate-180">
         <svg className="relative block w-full h-[60px] md:h-[80px]" viewBox="0 0 1200 120" preserveAspectRatio="none">
@@ -56,15 +88,21 @@ const TeachersSection = () => {
             </h2>
             <p className="mt-4 text-muted-foreground leading-relaxed font-light tracking-wide">{t.teachersSection.subtitle}</p>
 
-            {/* Dashboard mockup */}
+            {/* Dashboard mockup — 3D tilt on cursor */}
             <motion.div
+              ref={cardRef}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ type: "spring", stiffness: 200, damping: 24, delay: 0.2 }}
               className="mt-8 relative"
+              style={{ perspective: 800 }}
             >
-              <div className="rounded-2xl p-[1px] bg-gradient-to-br from-primary/60 via-violet-500/40 to-emerald-500/30">
+              <motion.div
+                className="rounded-2xl p-[1px] bg-gradient-to-br from-primary/60 via-violet-500/40 to-emerald-500/30"
+                style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+                transition={{ type: "spring", stiffness: 150, damping: 20 }}
+              >
                 <div className="rounded-2xl bg-card/95 backdrop-blur-sm p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -104,7 +142,7 @@ const TeachersSection = () => {
                     <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span>Avg</span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
           </motion.div>
 

@@ -126,8 +126,19 @@ const DiagnosticsPage = () => {
     setSaving(true);
     try {
       const scores = getScoresObject();
+      const { fullResult } = getResults();
+      const answersWithAntiCheat = {
+        ...answers,
+        _anti_cheat: {
+          passed: fullResult.antiCheat.passed,
+          confidence: fullResult.adjustedConfidence,
+          suspicion: fullResult.antiCheat.suspicionScore,
+          recommendation: fullResult.antiCheat.recommendation,
+          violations: fullResult.antiCheat.violations.map(v => v.code),
+        },
+      };
       const result = await saveDiagnosticsResult({
-        answers,
+        answers: answersWithAntiCheat,
         scores,
       });
 

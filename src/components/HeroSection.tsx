@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, ChevronDown, Brain, Users, Dumbbell, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronDown, Brain, Users, Dumbbell, Sparkles, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useLang } from "@/i18n/LanguageContext";
@@ -78,6 +78,19 @@ const FEATURES = [
     stat: "3+",
     floatClass: "animate-[float3_7s_ease-in-out_infinite]",
     offset: "lg:translate-x-6",
+  },
+  {
+    icon: BookOpen,
+    color: "text-orange-400",
+    bg: "bg-orange-500/10",
+    borderHover: "hover:border-orange-500/30",
+    titleRu: "Ресурсы",
+    titleKz: "Ресурстар",
+    descRu: "Видео, статьи и книги по навыкам",
+    descKz: "Дағдылар бойынша бейне, мақала және кітаптар",
+    stat: "20+",
+    floatClass: "animate-[float1_9s_ease-in-out_infinite]",
+    offset: "lg:-translate-x-1",
   },
 ];
 

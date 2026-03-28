@@ -42,11 +42,14 @@ const PhysicsDiagnosticsPage = () => {
     });
   }, [currentQ]);
 
-  // Use localized questions for display text, keeping scoring metadata from allQuestions
+  // Use localized questions for display text, keeping scores from allQuestions (source of truth)
   const questions = t.physicsQuestions.map((tq, i) => ({
     ...allQuestions[i],
     text: tq.text,
-    options: tq.options,
+    options: allQuestions[i].options.map((opt, j) => ({
+      ...opt,
+      label: tq.options[j]?.label || opt.label,
+    })),
   }));
 
   const q = questions[currentQ];

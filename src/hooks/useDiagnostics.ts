@@ -52,19 +52,18 @@ export const useDiagnostics = () => {
                 ? { ...answers, _test_type: testType }
                 : answers;
 
-            const result: TablesInsert<"diagnostics_results"> = {
-                user_id: user.id,
-                cognitive_score: scores.cognitive,
-                soft_score: scores.soft,
-                professional_score: scores.professional,
-                adaptability_score: scores.adaptability,
-                average_score: scores.average,
-                answers: answersWithMeta,
-            };
-
+            const insertPayload = {
+                    user_id: user.id,
+                    cognitive_score: scores.cognitive,
+                    soft_score: scores.soft,
+                    professional_score: scores.professional,
+                    adaptability_score: scores.adaptability,
+                    average_score: scores.average,
+                    answers: answersWithMeta as any,
+                };
             const { data, error: supabaseError } = await supabase
                 .from("diagnostics_results")
-                .insert([result])
+                .insert(insertPayload)
                 .select()
                 .single();
 
@@ -291,7 +290,7 @@ export const useDiagnostics = () => {
      */
     const downloadAsCSV = (result: Tables<"diagnostics_results">, userName: string = "User") => {
         const csv = generateCSV(result, userName);
-        const blob = new Blob(["\uFEFF" + "sep=;\n" + csv], { type: "text/csv;charset=utf-8;" });
+        const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
 

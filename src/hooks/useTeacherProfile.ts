@@ -307,7 +307,7 @@ export const useTeacherProfile = () => {
     });
 
     const csv = [header, ...rows].join("\n");
-    const blob = new Blob(["\uFEFF" + "sep=;\n" + csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `group_${myProfile.group_name}_results.csv`;

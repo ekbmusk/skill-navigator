@@ -32,6 +32,7 @@ import ProfileEditDialog from "@/components/profile/ProfileEditDialog";
 import { useTeacherProfile } from "@/hooks/useTeacherProfile";
 import { computeTeacherBadges } from "@/hooks/useTeacherBadges";
 import AchievementBadges from "@/components/profile/AchievementBadges";
+import GroupTab from "@/components/profile/GroupTab";
 import { useNavigate } from "react-router-dom";
 
 const ProfilePage = () => {
@@ -201,11 +202,12 @@ const ProfilePage = () => {
       <Navbar />
       <div className="container max-w-4xl pt-24 pb-12 px-3 sm:px-4">
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className={`grid w-full ${role === "student" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-5" : "grid-cols-2"} mb-6 h-auto`}>
+          <TabsList className={`grid w-full ${role === "student" ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-6" : "grid-cols-2"} mb-6 h-auto`}>
             <TabsTrigger value="profile">{t.profile.title}</TabsTrigger>
             {role === "student" && <TabsTrigger value="progress">{t.progress.title}</TabsTrigger>}
             {role === "student" && <TabsTrigger value="tests">{t.profile.tests}</TabsTrigger>}
             {role === "student" && <TabsTrigger value="trainers">{t.nav.trainers}</TabsTrigger>}
+            {role === "student" && <TabsTrigger value="group">{t.group.tab}</TabsTrigger>}
             {role === "student" && <TabsTrigger value="cases">{t.profileCases?.tab || "Кейсы"}</TabsTrigger>}
             {role === "teacher" && <TabsTrigger value="activity">{(t as any).teacherProfile?.activity || "Активность"}</TabsTrigger>}
           </TabsList>
@@ -465,37 +467,81 @@ const ProfilePage = () => {
                             </CardContent>
                           </Card>
 
-                          {/* First vs Last comparison */}
-                          {testResults.length >= 2 && (
-                            <Card className="border-border bg-card">
-                              <CardHeader>
-                                <CardTitle className="font-display text-lg">
-                                  {t.progress.firstAttempt} → {t.progress.lastAttempt}
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="grid sm:grid-cols-2 gap-4">
-                                  {(["cognitive_score", "soft_score", "professional_score", "adaptability_score"] as const).map((key) => {
-                                    const catKey = key.replace("_score", "") as "cognitive" | "soft" | "professional" | "adaptability";
-                                    const diff = Math.round(last[key] - first[key]);
-                                    return (
-                                      <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
-                                        <span className="text-sm font-medium">{t.categories[catKey]}</span>
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-sm text-muted-foreground">{Math.round(first[key])}%</span>
-                                          <span className="text-muted-foreground">→</span>
-                                          <span className="text-sm font-semibold">{Math.round(last[key])}%</span>
-                                          <span className={`text-xs font-medium ${diff >= 0 ? "text-green-400" : "text-destructive"}`}>
-                                            ({diff >= 0 ? "+" : ""}{diff})
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
+                          {/* First vs Last comparison — per test type */}
+                          {(() => {
+                            const byType = new Map<string, typeof sorted>();
+                            for (const r of sorted) {
+                              const type = (r.answers as any)?._test_type || "general";
+                              if (!byType.has(type)) byType.set(type, []);
+                              byType.get(type)!.push(r);
+                            }
+
+                            const typeLabels: Record<string, string> = {
+                              general: isKz ? "Жалпы дағдылар" : "Общие навыки",
+                              physics: isKz ? "Физика" : "Физика",
+                              infocomm: isKz ? "Инфокомм" : "Инфокомм",
+                            };
+
+                            const catLabelsMap: Record<string, Record<string, string>> = {
+                              general: {
+                                cognitive_score: t.categories.cognitive,
+                                soft_score: t.categories.soft,
+                                professional_score: t.categories.professional,
+                                adaptability_score: t.categories.adaptability,
+                              },
+                              physics: {
+                                cognitive_score: (t as any).physicsCategories?.mechanics || "Механика",
+                                soft_score: (t as any).physicsCategories?.thermodynamics || "Термодинамика",
+                                professional_score: (t as any).physicsCategories?.electromagnetism || "Электромагнетизм",
+                                adaptability_score: (t as any).physicsCategories?.optics_waves || "Оптика",
+                              },
+                              infocomm: {
+                                cognitive_score: isKz ? "Мотивациялық" : "Мотивационный",
+                                soft_score: isKz ? "Когнитивтік" : "Когнитивный",
+                                professional_score: isKz ? "Іс-әрекеттік" : "Деятельностный",
+                                adaptability_score: isKz ? "Рефлексивтік" : "Рефлексивный",
+                              },
+                            };
+
+                            const typesWithMultiple = [...byType.entries()].filter(([, results]) => results.length >= 2);
+                            if (typesWithMultiple.length === 0) return null;
+
+                            return typesWithMultiple.map(([type, results]) => {
+                              const typeFirst = results[0];
+                              const typeLast = results[results.length - 1];
+                              const labels = catLabelsMap[type] || catLabelsMap.general;
+
+                              return (
+                                <Card key={type} className="border-border bg-card">
+                                  <CardHeader>
+                                    <CardTitle className="font-display text-lg">
+                                      {typeLabels[type] || type}: {t.progress.firstAttempt} → {t.progress.lastAttempt}
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <div className="grid sm:grid-cols-2 gap-4">
+                                      {(["cognitive_score", "soft_score", "professional_score", "adaptability_score"] as const).map((key) => {
+                                        const diff = Math.round(typeLast[key] - typeFirst[key]);
+                                        return (
+                                          <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                                            <span className="text-sm font-medium">{labels[key]}</span>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-sm text-muted-foreground">{Math.round(typeFirst[key])}%</span>
+                                              <span className="text-muted-foreground">→</span>
+                                              <span className="text-sm font-semibold">{Math.round(typeLast[key])}%</span>
+                                              <span className={`text-xs font-medium ${diff >= 0 ? "text-green-400" : "text-destructive"}`}>
+                                                ({diff >= 0 ? "+" : ""}{diff})
+                                              </span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            });
+                          })()}
                         </>
                       );
                     })()}
@@ -1105,6 +1151,13 @@ const ProfilePage = () => {
                   </div>
                 )}
               </motion.div>
+            </TabsContent>
+          )}
+
+          {/* Group Tab */}
+          {role === "student" && (
+            <TabsContent value="group">
+              <GroupTab currentUserId={user?.id || ""} lang={lang} />
             </TabsContent>
           )}
 
