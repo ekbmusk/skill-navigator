@@ -1182,8 +1182,11 @@ const ProfilePage = () => {
       <ProfileEditDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        user={user}
-        profile={profile}
+        userId={user?.id || ""}
+        initialFullName={profile?.full_name || ""}
+        initialGroupName={profile?.group_name || ""}
+        initialAvatarUrl={profile?.avatar_url || ""}
+        lang={lang}
         onSaved={() => {
           setEditDialogOpen(false);
           window.location.reload();

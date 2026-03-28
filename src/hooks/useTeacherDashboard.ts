@@ -14,6 +14,11 @@ export interface StudentWithScores {
   casesCompleted: number;
   avgPeerFeedback: number | null;
   avgSolutionScore: number | null;
+  trainerAttempts: number;
+  trainerBestSbi: number;
+  trainerBestConflict: number;
+  trainerBestSpeaking: number;
+  latestTestType: string;
 }
 
 export interface StudentCaseDetail {
@@ -106,7 +111,7 @@ export function useTeacherDashboard(): UseTeacherDashboardResult {
         const { data: results, error: resultsError } = await supabase
           .from("diagnostics_results")
           .select(
-            "user_id, cognitive_score, soft_score, professional_score, adaptability_score, average_score, completed_at"
+            "user_id, cognitive_score, soft_score, professional_score, adaptability_score, average_score, completed_at, answers"
           )
           .in("user_id", studentIds)
           .order("completed_at", { ascending: false });
@@ -121,7 +126,52 @@ export function useTeacherDashboard(): UseTeacherDashboardResult {
           }
         }
 
-        // 5. Fetch case performance data in parallel
+        // 5. Fetch trainer attempts and case solutions counts in parallel
+        const [trainerAttemptsRes, caseSolutionsCountRes] = await Promise.all([
+          supabase
+            .from("trainer_attempts" as any)
+            .select("user_id, type, score_percent")
+            .in("user_id", studentIds),
+          supabase
+            .from("case_solutions")
+            .select("user_id")
+            .in("user_id", studentIds),
+        ]);
+
+        // Compute trainer stats per student
+        const trainerStatsMap = new Map<
+          string,
+          { count: number; bestSbi: number; bestConflict: number; bestSpeaking: number }
+        >();
+        if (trainerAttemptsRes.data) {
+          for (const row of trainerAttemptsRes.data as any[]) {
+            const uid = row.user_id as string;
+            const entry = trainerStatsMap.get(uid) ?? {
+              count: 0,
+              bestSbi: 0,
+              bestConflict: 0,
+              bestSpeaking: 0,
+            };
+            entry.count += 1;
+            const score = (row.score_percent as number) ?? 0;
+            const type = (row.type as string) ?? "";
+            if (type === "sbi" && score > entry.bestSbi) entry.bestSbi = score;
+            if (type === "conflict" && score > entry.bestConflict) entry.bestConflict = score;
+            if (type === "speaking" && score > entry.bestSpeaking) entry.bestSpeaking = score;
+            trainerStatsMap.set(uid, entry);
+          }
+        }
+
+        // Count case solutions per student
+        const caseSolutionsCountMap = new Map<string, number>();
+        if (caseSolutionsCountRes.data) {
+          for (const row of caseSolutionsCountRes.data) {
+            const uid = row.user_id as string;
+            caseSolutionsCountMap.set(uid, (caseSolutionsCountMap.get(uid) ?? 0) + 1);
+          }
+        }
+
+        // 6. Fetch case performance data in parallel
         const [participantsRes, feedbackRes, solutionsRes] = await Promise.all([
           // Completed simulation sessions per student
           supabase
@@ -182,11 +232,13 @@ export function useTeacherDashboard(): UseTeacherDashboardResult {
           }
         }
 
-        // 6. Build final student list
+        // 7. Build final student list
         const studentList: StudentWithScores[] = filteredProfiles.map((p) => {
           const r = latestByUser.get(p.user_id);
           const peerEntry = peerFeedbackMap.get(p.user_id);
           const solEntry = solutionScoreMap.get(p.user_id);
+          const trainerStats = trainerStatsMap.get(p.user_id);
+          const answers = (r as any)?.answers as Record<string, any> | undefined;
           return {
             userId: p.user_id,
             name: p.full_name || p.user_id.slice(0, 8),
@@ -196,13 +248,18 @@ export function useTeacherDashboard(): UseTeacherDashboardResult {
             adaptability: r ? Math.round(r.adaptability_score) : 0,
             total: r ? Math.round(r.average_score) : 0,
             completedAt: r?.completed_at ?? null,
-            casesCompleted: casesCountMap.get(p.user_id) ?? 0,
+            casesCompleted: caseSolutionsCountMap.get(p.user_id) ?? 0,
             avgPeerFeedback: peerEntry
               ? Math.round((peerEntry.sum / peerEntry.count) * 10) / 10
               : null,
             avgSolutionScore: solEntry
               ? Math.round(solEntry.sum / solEntry.count)
               : null,
+            trainerAttempts: trainerStats?.count ?? 0,
+            trainerBestSbi: trainerStats?.bestSbi ?? 0,
+            trainerBestConflict: trainerStats?.bestConflict ?? 0,
+            trainerBestSpeaking: trainerStats?.bestSpeaking ?? 0,
+            latestTestType: answers?._test_type ?? "general",
           };
         });
 

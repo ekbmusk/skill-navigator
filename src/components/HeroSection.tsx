@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, ChevronDown, Target, Users, Briefcase } from "lucide-react";
+import { ArrowRight, ChevronDown, Target, Users, Briefcase, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useLang } from "@/i18n/LanguageContext";
+
+// ── Animated counter ─────────────────────────────────────────────────────────
 
 const AnimatedCounter = ({ target, label, icon: Icon }: { target: number; label: string; icon: React.ElementType }) => {
   const [count, setCount] = useState(0);
@@ -52,6 +54,8 @@ const AnimatedCounter = ({ target, label, icon: Icon }: { target: number; label:
   );
 };
 
+// ── Main hero ────────────────────────────────────────────────────────────────
+
 const HeroSection = () => {
   const { t } = useLang();
 
@@ -60,45 +64,39 @@ const HeroSection = () => {
       {/* Background */}
       <div className="absolute inset-0 bg-background" />
 
-      {/* Diagonal accent band */}
+      {/* Two ambient orbs — CSS animation only, no JS */}
+      <div
+        className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] rounded-full blur-[150px] animate-[pulse_12s_ease-in-out_infinite]"
+        style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.07), hsl(270 60% 60% / 0.04), transparent 70%)" }}
+      />
+      <div
+        className="absolute bottom-[-5%] left-[-10%] w-[500px] h-[500px] rounded-full blur-[130px] animate-[pulse_16s_ease-in-out_infinite_2s]"
+        style={{ background: "radial-gradient(circle, hsl(var(--accent) / 0.06), hsl(340 70% 65% / 0.03), transparent 70%)" }}
+      />
+
+      {/* Dot grid — pure CSS */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "linear-gradient(135deg, transparent 0%, transparent 45%, hsl(var(--primary) / 0.03) 45%, hsl(var(--primary) / 0.05) 55%, transparent 55%)",
+          backgroundImage: "radial-gradient(hsl(var(--primary) / 0.07) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+          maskImage: "radial-gradient(ellipse 70% 50% at 30% 40%, rgba(0,0,0,0.35), transparent)",
+          WebkitMaskImage: "radial-gradient(ellipse 70% 50% at 30% 40%, rgba(0,0,0,0.35), transparent)",
         }}
       />
 
-      {/* Grid — editorial feel */}
+      {/* Diagonal accent band — pure CSS */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-20 dark:opacity-30"
+        className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage:
-            "linear-gradient(hsl(var(--accent) / 0.1) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--accent) / 0.1) 1px, transparent 1px)",
-          backgroundSize: "120px 120px",
-          maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 60%)",
-          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 60%)",
+          background: "linear-gradient(135deg, transparent 42%, hsl(var(--primary) / 0.03) 42%, hsl(270 60% 60% / 0.03) 58%, transparent 58%)",
         }}
       />
 
-      {/* Ambient orbs */}
-      <motion.div
-        className="absolute top-[10%] right-[5%] w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/6 dark:from-primary/4 to-accent/4 dark:to-accent/3 blur-[140px]"
-        animate={{ y: [0, -30, 0] }}
-        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute bottom-[15%] left-[0%] w-[500px] h-[500px] rounded-full bg-accent/5 dark:bg-accent/3 blur-[120px]"
-        animate={{ x: [0, 20, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      {/* Noise texture */}
-      <div className="absolute inset-0 bg-noise pointer-events-none" />
-
-      {/* Content — asymmetric layout */}
+      {/* Content */}
       <div className="container relative z-10 px-4">
         <div className="grid lg:grid-cols-12 gap-8 items-center min-h-[85vh]">
-          {/* Left — main content, takes 7 cols */}
+          {/* Left — main content */}
           <div className="lg:col-span-7">
             <motion.div
               initial={{ opacity: 0, y: 40 }}
@@ -107,16 +105,16 @@ const HeroSection = () => {
             >
               {/* Badge */}
               <motion.div
-                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full border border-accent/20 bg-accent/5 text-accent text-xs font-medium uppercase tracking-[0.15em]"
+                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-sm text-xs font-medium uppercase tracking-[0.15em]"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                {t.hero.badge}
+                <Sparkles size={14} className="text-primary animate-spin" style={{ animationDuration: "4s" }} />
+                <span className="text-gradient">{t.hero.badge}</span>
               </motion.div>
 
-              {/* Heading — editorial stacked */}
+              {/* Heading */}
               <h1 className="font-display font-800 tracking-[-0.04em] leading-[0.95]">
                 <motion.span
                   className="block text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-foreground"
@@ -174,7 +172,7 @@ const HeroSection = () => {
             </motion.div>
           </div>
 
-          {/* Right — stats column, takes 5 cols */}
+          {/* Right — stats column */}
           <motion.div
             className="lg:col-span-5 lg:pl-8"
             initial={{ opacity: 0, x: 40 }}
@@ -182,9 +180,7 @@ const HeroSection = () => {
             transition={{ duration: 0.8, delay: 0.6 }}
           >
             <div className="relative">
-              {/* Decorative vertical line */}
-              <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-accent/30 to-transparent" />
-
+              <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
               <div className="lg:pl-12 space-y-12">
                 <AnimatedCounter target={15} label={t.hero.statSkills} icon={Target} />
                 <AnimatedCounter target={500} label={t.hero.statStudents} icon={Users} />
@@ -207,7 +203,7 @@ const HeroSection = () => {
         </motion.div>
       </motion.div>
 
-      {/* Diagonal section cut at bottom */}
+      {/* Diagonal section cut */}
       <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none">
         <svg viewBox="0 0 1440 96" fill="none" className="absolute bottom-0 w-full h-full" preserveAspectRatio="none">
           <path d="M0 96L1440 96L1440 0L0 96Z" fill="hsl(var(--background))" />

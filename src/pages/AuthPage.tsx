@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useLang } from "@/i18n/LanguageContext";
+import { useTheme } from "@/hooks/useTheme";
+import { Sun, Moon, Globe } from "lucide-react";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,7 +20,8 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { t } = useLang();
+  const { t, lang, setLang } = useLang();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     if (user) navigate("/");
@@ -55,6 +58,28 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex">
+      {/* Language & Theme toggles */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="absolute top-4 right-4 z-50 flex items-center gap-2"
+      >
+        <button
+          onClick={() => setLang(lang === "ru" ? "kz" : "ru")}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-card/60 backdrop-blur-xl border border-border/50 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+        >
+          <Globe className="h-4 w-4" />
+          {lang === "ru" ? "KZ" : "RU"}
+        </button>
+        <button
+          onClick={toggleTheme}
+          className="flex items-center justify-center w-9 h-9 rounded-xl bg-card/60 backdrop-blur-xl border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+        >
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
+      </motion.div>
+
       {/* Decorative gradient orbs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div

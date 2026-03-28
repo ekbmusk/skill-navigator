@@ -41,9 +41,10 @@ const TeachersSection = () => {
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-violet-500/5 blur-[100px] pointer-events-none" />
 
       <div className="container px-4 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="grid lg:grid-cols-12 gap-12 items-center">
           {/* Left side: text + dashboard mockup */}
           <motion.div
+            className="lg:col-span-7"
             initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -108,7 +109,7 @@ const TeachersSection = () => {
           </motion.div>
 
           {/* Right side: feature items */}
-          <div className="space-y-4">
+          <div className="lg:col-span-5 space-y-4">
             {items.map((item, i) => {
               const color = featureColors[i];
               return (
