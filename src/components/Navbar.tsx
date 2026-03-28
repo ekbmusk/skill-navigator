@@ -12,9 +12,10 @@ const Navbar = () => {
   const { lang, setLang, t } = useLang();
 
   const links = [
-    { label: t.nav.diagnostics, href: "/diagnostics" },
+    { label: t.nav.tests, href: "/tests" },
     ...(role === "teacher" ? [{ label: t.nav.dashboard, href: "/dashboard" }] : []),
-    { label: t.nav.cases, href: "/case" },
+    { label: t.nav.cases, href: "/cases" },
+    { label: t.nav.resources, href: "/resources" },
   ];
 
   const handleSignOut = async () => {

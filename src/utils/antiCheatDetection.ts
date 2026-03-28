@@ -3,10 +3,17 @@
 // Многоуровневая система обнаружения недобросовестных ответов
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { questions, applyReversal, getQuestionsByCategory } from "@/data/diagnosticsQuestions";
-import type { Category, DiagnosticsQuestion } from "@/data/diagnosticsQuestions";
+import { questions as defaultQuestions, applyReversal as defaultApplyReversal, getQuestionsByCategory as defaultGetQuestionsByCategory } from "@/data/diagnosticsQuestions";
+import type { DiagnosticsQuestion } from "@/data/diagnosticsQuestions";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+/** Generic question config so anti-cheat works with any diagnostics test */
+export interface AntiCheatQuestionConfig {
+    questions: { id: number; category: string; isReversed: boolean }[];
+    applyReversal: (rawScore: number, isReversed: boolean) => number;
+    getQuestionsByCategory: () => Record<string, { id: number; isReversed: boolean }[]>;
+}
 
 export type ViolationSeverity = "low" | "medium" | "high" | "critical";
 
@@ -130,8 +137,8 @@ function checkStraightLining(answers: Record<number, number>): Violation | null 
  * CHECK 2: Pattern detection
  * Ответы образуют регулярный паттерн: 1,2,3,4,1,2,3,4 или 4,3,2,1 и т.д.
  */
-function checkPatternResponses(answers: Record<number, number>): Violation | null {
-    const orderedAnswers = questions
+function checkPatternResponses(answers: Record<number, number>, cfg: AntiCheatQuestionConfig): Violation | null {
+    const orderedAnswers = cfg.questions
         .map(q => answers[q.id])
         .filter((v): v is number => v !== undefined);
 
@@ -158,7 +165,7 @@ function checkPatternResponses(answers: Record<number, number>): Violation | nul
             code: "PERIODIC_PATTERN",
             severity: "high",
             description: `Обнаружен периодический паттерн ответов (совпадений: ${Math.round(periodicScore * 100)}%)`,
-            affectedIds: questions.map(q => q.id),
+            affectedIds: cfg.questions.map(q => q.id),
             evidence: `Периодический паттерн с коэффициентом ${periodicScore.toFixed(2)}`,
         };
     }
@@ -171,7 +178,7 @@ function checkPatternResponses(answers: Record<number, number>): Violation | nul
             code: "MONOTONIC_PATTERN",
             severity: "high",
             description: `Ответы монотонно ${ascending ? "возрастают" : "убывают"}`,
-            affectedIds: questions.map(q => q.id),
+            affectedIds: cfg.questions.map(q => q.id),
             evidence: `Направление: ${ascending ? "↑" : "↓"}`,
         };
     }
@@ -184,19 +191,19 @@ function checkPatternResponses(answers: Record<number, number>): Violation | nul
  * Студент отвечает высоко на прямой И высоко на обратный вопрос одной категории
  * (либо низко на оба) — логическое противоречие
  */
-function checkReversedInconsistency(answers: Record<number, number>): Violation | null {
-    const byCategory = getQuestionsByCategory();
+function checkReversedInconsistency(answers: Record<number, number>, cfg: AntiCheatQuestionConfig): Violation | null {
+    const byCategory = cfg.getQuestionsByCategory();
     const violations: number[] = [];
     const details: string[] = [];
 
-    for (const [cat, qs] of Object.entries(byCategory) as [Category, DiagnosticsQuestion[]][]) {
+    for (const [cat, qs] of Object.entries(byCategory)) {
         const reversed = qs.filter(q => q.isReversed);
         const normal = qs.filter(q => !q.isReversed);
 
         for (const rq of reversed) {
             const rRaw = answers[rq.id];
             if (rRaw === undefined) continue;
-            const rAdjusted = applyReversal(rRaw, true); // инвертированный
+            const rAdjusted = cfg.applyReversal(rRaw, true); // инвертированный
 
             for (const nq of normal) {
                 const nRaw = answers[nq.id];
@@ -267,8 +274,8 @@ function checkExtremeResponseStyle(answers: Record<number, number>): Violation |
  * CHECK 5: Intra-category variance
  * В одной категории все ответы одинаковые → нет дифференциации
  */
-function checkIntraCategoryVariance(answers: Record<number, number>): Violation | null {
-    const byCategory = getQuestionsByCategory();
+function checkIntraCategoryVariance(answers: Record<number, number>, cfg: AntiCheatQuestionConfig): Violation | null {
+    const byCategory = cfg.getQuestionsByCategory();
     const flagged: string[] = [];
 
     for (const [cat, qs] of Object.entries(byCategory)) {
@@ -353,8 +360,8 @@ function checkSpeedAbuse(
  * CHECK 7: Completeness
  * Пропущенные вопросы
  */
-function checkCompleteness(answers: Record<number, number>): Violation | null {
-    const total = questions.length;
+function checkCompleteness(answers: Record<number, number>, cfg: AntiCheatQuestionConfig): Violation | null {
+    const total = cfg.questions.length;
     const answered = Object.keys(answers).length;
     const missing = total - answered;
 
@@ -363,7 +370,7 @@ function checkCompleteness(answers: Record<number, number>): Violation | null {
             code: "INCOMPLETE_CRITICAL",
             severity: "critical",
             description: `Не отвечено на ${missing} вопросов из ${total}`,
-            affectedIds: questions
+            affectedIds: cfg.questions
                 .filter(q => answers[q.id] === undefined)
                 .map(q => q.id),
             evidence: `Пропущено: ${missing}/${total}`,
@@ -375,7 +382,7 @@ function checkCompleteness(answers: Record<number, number>): Violation | null {
             code: "INCOMPLETE_MINOR",
             severity: "low",
             description: `Пропущено ${missing} вопрос(а)`,
-            affectedIds: questions
+            affectedIds: cfg.questions
                 .filter(q => answers[q.id] === undefined)
                 .map(q => q.id),
             evidence: `Пропущено: ${missing}/${total}`,
@@ -403,22 +410,32 @@ const SEVERITY_PENALTY: Record<ViolationSeverity, number> = {
 
 // ─── Main Function ────────────────────────────────────────────────────────────
 
+/** Default config using the general diagnostics questions */
+const defaultConfig: AntiCheatQuestionConfig = {
+    questions: defaultQuestions,
+    applyReversal: defaultApplyReversal,
+    getQuestionsByCategory: defaultGetQuestionsByCategory as () => Record<string, { id: number; isReversed: boolean }[]>,
+};
+
 /**
  * Запустить все anti-cheat проверки.
  * @param answers    Словарь {questionId: score}
  * @param timing     Опционально: данные о времени прохождения
+ * @param config     Опционально: конфигурация вопросов (по умолчанию — общий тест)
  */
 export function runAntiCheatDetection(
     answers: Record<number, number>,
-    timing?: TimingData
+    timing?: TimingData,
+    config?: AntiCheatQuestionConfig
 ): AntiCheatReport {
+    const cfg = config ?? defaultConfig;
     const rawViolations: (Violation | null)[] = [
-        checkCompleteness(answers),
+        checkCompleteness(answers, cfg),
         checkStraightLining(answers),
-        checkPatternResponses(answers),
-        checkReversedInconsistency(answers),
+        checkPatternResponses(answers, cfg),
+        checkReversedInconsistency(answers, cfg),
         checkExtremeResponseStyle(answers),
-        checkIntraCategoryVariance(answers),
+        checkIntraCategoryVariance(answers, cfg),
         timing ? checkSpeedAbuse(answers, timing) : null,
     ];
 

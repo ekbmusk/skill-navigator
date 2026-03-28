@@ -81,6 +81,25 @@ const AuthPage = () => {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? t.auth.loading : isLogin ? t.auth.login : t.auth.signup}
           </Button>
+          {isLogin && (
+            <button
+              type="button"
+              className="w-full text-sm text-muted-foreground hover:text-primary hover:underline mt-2"
+              onClick={async () => {
+                if (!email) {
+                  toast.error(t.auth.enterEmail);
+                  return;
+                }
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                  redirectTo: `${window.location.origin}/auth`,
+                });
+                if (error) toast.error(error.message);
+                else toast.success(t.auth.resetSent);
+              }}
+            >
+              {t.auth.forgotPassword}
+            </button>
+          )}
         </form>
 
         <div className="relative my-6">

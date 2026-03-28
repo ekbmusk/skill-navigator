@@ -19,6 +19,7 @@ export interface DiagnosticsResult {
 export interface SaveDiagnosticsParams {
     answers: Record<number, number>;
     scores: DiagnosticsResult;
+    testType?: string;
 }
 
 export const useDiagnostics = () => {
@@ -42,7 +43,11 @@ export const useDiagnostics = () => {
         setError(null);
 
         try {
-            const { scores, answers } = params;
+            const { scores, answers, testType } = params;
+
+            const answersWithMeta = testType
+                ? { ...answers, _test_type: testType }
+                : answers;
 
             const result: TablesInsert<"diagnostics_results"> = {
                 user_id: user.id,
@@ -51,7 +56,7 @@ export const useDiagnostics = () => {
                 professional_score: scores.professional,
                 adaptability_score: scores.adaptability,
                 average_score: scores.average,
-                answers: answers,
+                answers: answersWithMeta,
             };
 
             const { data, error: supabaseError } = await supabase
@@ -228,6 +233,24 @@ export const useDiagnostics = () => {
         document.body.removeChild(link);
     };
 
+    /**
+     * Compute trend from an array of diagnostics results
+     * Results should be ordered by completed_at descending (newest first)
+     */
+    const computeTrend = (results: Tables<"diagnostics_results">[]): "improving" | "declining" | "stable" => {
+        if (results.length < 2) return "stable";
+        // Sort ascending by date for comparison
+        const sorted = [...results].sort(
+            (a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
+        );
+        const first = sorted[0].average_score;
+        const last = sorted[sorted.length - 1].average_score;
+        const diff = last - first;
+        if (diff >= 3) return "improving";
+        if (diff <= -3) return "declining";
+        return "stable";
+    };
+
     return {
         loading,
         error,
@@ -237,5 +260,6 @@ export const useDiagnostics = () => {
         loadStudentResults,
         downloadAsCSV,
         generateCSV,
+        computeTrend,
     };
 };

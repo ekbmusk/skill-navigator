@@ -227,8 +227,8 @@ export function runScoringEngine(
  * Возвращает простой массив {category, label, score} как раньше,
  * плюс расширенные данные.
  */
-export function getResultsCompat(answers: Record<number, number>) {
-    const result = runScoringEngine(answers);
+export function getResultsCompat(answers: Record<number, number>, timing?: TimingData) {
+    const result = runScoringEngine(answers, timing);
     return {
         /** Массив результатов в формате, ожидаемом DiagnosticsResults.tsx */
         results: result.categories.map(c => ({

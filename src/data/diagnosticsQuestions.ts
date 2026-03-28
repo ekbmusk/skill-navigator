@@ -6,10 +6,14 @@
 
 export type Category = "cognitive" | "soft" | "professional" | "adaptability";
 
+export type QuestionType = "single_choice" | "ranking" | "scenario";
+
 export interface DiagnosticsQuestion {
   id: number;
   text: string;
   category: Category;
+  /** Тип вопроса: single_choice (по умолчанию), ranking, scenario */
+  questionType: QuestionType;
   /** Вес вопроса в категории. 1.0 = стандартный, 1.5 = важный, 2.0 = ключевой */
   weight: number;
   /** true = обратный вопрос: при скоринге балл инвертируется (5 - score) */
@@ -19,6 +23,10 @@ export interface DiagnosticsQuestion {
   /** Тег компетенции для детальной аналитики */
   competencyTag: string;
   options: { label: string; score: number }[];
+  /** Текст сценария (только для questionType: "scenario") */
+  scenario?: string;
+  /** Идеальный порядок индексов опций (только для questionType: "ranking") */
+  idealOrder?: number[];
 }
 
 export const questions: DiagnosticsQuestion[] = [
@@ -28,6 +36,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 1,
     text: "Как вы обычно подходите к решению сложной задачи, с которой раньше не сталкивались?",
+    questionType: "single_choice",
     category: "cognitive",
     weight: 1.0,
     isReversed: false,
@@ -43,6 +52,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 2,
     text: "При анализе данных или информации вы чаще всего:",
+    questionType: "single_choice",
     category: "cognitive",
     weight: 1.0,
     isReversed: false,
@@ -58,6 +68,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 3,
     text: "Когда вам нужно принять решение с неполной информацией, вы:",
+    questionType: "single_choice",
     category: "cognitive",
     weight: 1.5,
     isReversed: false,
@@ -73,6 +84,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 13,
     text: "Когда вы сталкиваетесь с противоречивыми данными, ваша первая реакция:",
+    questionType: "single_choice",
     category: "cognitive",
     weight: 1.5,
     isReversed: false,
@@ -88,6 +100,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 14,
     text: "Как часто вы подвергаете сомнению собственные выводы?",
+    questionType: "single_choice",
     category: "cognitive",
     weight: 1.0,
     isReversed: false,
@@ -103,6 +116,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 15,
     text: "При изучении новой темы вы предпочитаете:",
+    questionType: "single_choice",
     category: "cognitive",
     weight: 1.0,
     isReversed: false,
@@ -118,6 +132,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 16,
     text: "Если задача оказалась значительно сложнее, чем предполагалось изначально, вы:",
+    questionType: "single_choice",
     category: "cognitive",
     weight: 1.5,
     isReversed: false,
@@ -133,6 +148,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 17,
     text: "Когда вы решаете задачу, вы обычно стремитесь найти одно правильное решение и придерживаетесь его.",
+    questionType: "single_choice",
     category: "cognitive",
     weight: 1.0,
     isReversed: true,
@@ -151,6 +167,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 4,
     text: "Как вы ведёте себя при конфликте в команде?",
+    questionType: "single_choice",
     category: "soft",
     weight: 1.5,
     isReversed: false,
@@ -166,6 +183,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 5,
     text: "Как вы обычно представляете свои идеи группе?",
+    questionType: "single_choice",
     category: "soft",
     weight: 1.0,
     isReversed: false,
@@ -181,6 +199,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 6,
     text: "Когда коллега допускает ошибку, вы:",
+    questionType: "single_choice",
     category: "soft",
     weight: 1.0,
     isReversed: false,
@@ -196,6 +215,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 18,
     text: "Вы получили критику по своей работе на общем собрании. Как вы реагируете?",
+    questionType: "single_choice",
     category: "soft",
     weight: 1.5,
     isReversed: false,
@@ -211,6 +231,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 19,
     text: "Насколько хорошо вы умеете слушать собеседника, не перебивая и не формулируя ответ заранее?",
+    questionType: "single_choice",
     category: "soft",
     weight: 1.0,
     isReversed: false,
@@ -226,6 +247,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 20,
     text: "При работе в команде я предпочитаю действовать самостоятельно, не отвлекая других участников.",
+    questionType: "single_choice",
     category: "soft",
     weight: 1.0,
     isReversed: true,
@@ -241,6 +263,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 21,
     text: "Как вы выстраиваете доверие с новыми коллегами или партнёрами?",
+    questionType: "single_choice",
     category: "soft",
     weight: 1.5,
     isReversed: false,
@@ -259,6 +282,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 7,
     text: "Как вы относитесь к изучению новых инструментов и технологий?",
+    questionType: "single_choice",
     category: "professional",
     weight: 1.0,
     isReversed: false,
@@ -274,6 +298,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 8,
     text: "Как вы организуете свой рабочий процесс?",
+    questionType: "single_choice",
     category: "professional",
     weight: 1.5,
     isReversed: false,
@@ -289,6 +314,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 9,
     text: "Как вы оцениваете качество своей работы?",
+    questionType: "single_choice",
     category: "professional",
     weight: 1.0,
     isReversed: false,
@@ -304,6 +330,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 22,
     text: "Как вы расставляете приоритеты, когда у вас несколько срочных задач одновременно?",
+    questionType: "single_choice",
     category: "professional",
     weight: 2.0,
     isReversed: false,
@@ -319,6 +346,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 23,
     text: "Если вы видите, что процесс в команде неэффективен, вы:",
+    questionType: "single_choice",
     category: "professional",
     weight: 1.5,
     isReversed: false,
@@ -334,6 +362,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 24,
     text: "Как вы документируете свою работу?",
+    questionType: "single_choice",
     category: "professional",
     weight: 1.0,
     isReversed: false,
@@ -349,6 +378,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 25,
     text: "Главное в работе — сдать задачу в срок, даже если качество немного пострадает.",
+    questionType: "single_choice",
     category: "professional",
     weight: 1.0,
     isReversed: true,
@@ -367,6 +397,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 10,
     text: "Как вы реагируете на неожиданные изменения в проекте?",
+    questionType: "single_choice",
     category: "adaptability",
     weight: 1.5,
     isReversed: false,
@@ -382,6 +413,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 11,
     text: "Если привычный метод не работает, вы:",
+    questionType: "single_choice",
     category: "adaptability",
     weight: 1.0,
     isReversed: false,
@@ -397,6 +429,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 12,
     text: "Как вы воспринимаете обратную связь и критику?",
+    questionType: "single_choice",
     category: "adaptability",
     weight: 1.0,
     isReversed: false,
@@ -412,6 +445,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 26,
     text: "Вам предложили перейти в другой отдел с новыми задачами, в которых у вас нет опыта. Ваша реакция:",
+    questionType: "single_choice",
     category: "adaptability",
     weight: 2.0,
     isReversed: false,
@@ -427,6 +461,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 27,
     text: "Как вы справляетесь с ситуацией, когда одновременно меняются правила, инструменты и команда?",
+    questionType: "single_choice",
     category: "adaptability",
     weight: 1.5,
     isReversed: false,
@@ -442,6 +477,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 28,
     text: "Как часто вы выходите за рамки привычного рабочего контекста для получения новых знаний?",
+    questionType: "single_choice",
     category: "adaptability",
     weight: 1.0,
     isReversed: false,
@@ -457,6 +493,7 @@ export const questions: DiagnosticsQuestion[] = [
   {
     id: 29,
     text: "Я предпочитаю стабильную среду с предсказуемыми задачами, чем постоянно меняющуюся.",
+    questionType: "single_choice",
     category: "adaptability",
     weight: 1.0,
     isReversed: true,
@@ -468,6 +505,60 @@ export const questions: DiagnosticsQuestion[] = [
       { label: "Скорее не согласен — мне нужен баланс", score: 3 },
       { label: "Совершенно не согласен — динамичная среда меня мотивирует", score: 4 },
     ],
+  },
+
+  // ─── NEW QUESTION TYPES (30–32) ────────────────────────────────────────────
+
+  {
+    id: 30,
+    text: "Расставьте подходы к командной коммуникации от наиболее эффективного к наименее эффективному:",
+    questionType: "ranking",
+    category: "soft",
+    weight: 1.5,
+    isReversed: false,
+    difficulty: "hard",
+    competencyTag: "communication",
+    options: [
+      { label: "Активное слушание", score: 4 },
+      { label: "Письменная документация", score: 3 },
+      { label: "Регулярные стендапы", score: 2 },
+      { label: "Асинхронные сообщения", score: 1 },
+    ],
+    idealOrder: [0, 1, 2, 3],
+  },
+  {
+    id: 31,
+    text: "Что вы сделаете в первую очередь?",
+    questionType: "scenario",
+    category: "professional",
+    weight: 2.0,
+    isReversed: false,
+    difficulty: "hard",
+    competencyTag: "crisis_management",
+    scenario: "Вы обнаружили серьёзную ошибку в проекте за день до дедлайна. Ошибка затрагивает ключевую функциональность, и команда уже готовится к релизу.",
+    options: [
+      { label: "Попытаюсь исправить сам, чтобы не задерживать команду", score: 2 },
+      { label: "Немедленно сообщу руководителю и команде о проблеме", score: 3 },
+      { label: "Оценю масштаб проблемы, предложу варианты решения и согласую план с командой", score: 4 },
+      { label: "Перенесу дедлайн — качество важнее сроков", score: 1 },
+    ],
+  },
+  {
+    id: 32,
+    text: "Расставьте стратегии адаптации от наиболее эффективной к наименее эффективной:",
+    questionType: "ranking",
+    category: "adaptability",
+    weight: 1.5,
+    isReversed: false,
+    difficulty: "hard",
+    competencyTag: "adaptation_strategy",
+    options: [
+      { label: "Проактивное обучение новому до того, как это потребуется", score: 4 },
+      { label: "Быстрое экспериментирование и итерации", score: 3 },
+      { label: "Наблюдение за успешными коллегами и копирование их подходов", score: 2 },
+      { label: "Ожидание чётких инструкций от руководства", score: 1 },
+    ],
+    idealOrder: [0, 1, 2, 3],
   },
 ];
 

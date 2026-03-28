@@ -7,20 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Save, User, Download, ArrowLeft } from "lucide-react";
+import { Camera, Save, User, Download, Printer, ArrowLeft, TrendingUp, TrendingDown, Minus, Trophy, BarChart3, Target, Brain, Shield, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLang } from "@/i18n/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDiagnostics } from "@/hooks/useDiagnostics";
 import type { Tables } from "@/integrations/supabase/types";
+import { runScoringEngine } from "@/utils/scoringEngine";
+import type { DiagnosticsResult as FullScoringResult, ProfilePattern, SkillLevel } from "@/utils/scoringEngine";
+import { printReport, printBasicReport } from "@/utils/pdfExport";
 import { motion } from "framer-motion";
+import ProgressChart from "@/components/ProgressChart";
 
 const ProfilePage = () => {
   const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { t } = useLang();
-  const { loadAllResults, downloadAsCSV } = useDiagnostics();
+  const { loadAllResults, downloadAsCSV, computeTrend } = useDiagnostics();
 
   const [fullName, setFullName] = useState(profile?.full_name || "");
   const [groupName, setGroupName] = useState(profile?.group_name || "");
@@ -74,12 +78,23 @@ const ProfilePage = () => {
     return recs[category] || "";
   };
 
-  const getScoreCategory = (name: string): "cognitive" | "soft" | "professional" | "adaptability" | null => {
-    if (name.includes("cognitive")) return "cognitive";
-    if (name.includes("soft")) return "soft";
-    if (name.includes("professional")) return "professional";
-    if (name.includes("adaptability")) return "adaptability";
-    return null;
+  const getProfileLabel = (pattern: ProfilePattern): string => {
+    const labels = t.results.profilePatterns as Record<string, string>;
+    return labels[pattern] || pattern;
+  };
+
+  const getSkillLevelLabel = (level: SkillLevel): string => {
+    const labels = t.results.skillLevels as Record<string, string>;
+    return labels[level] || level;
+  };
+
+  const getFullResultForTest = (test: Tables<"diagnostics_results">): FullScoringResult | null => {
+    if (!test.answers || typeof test.answers !== "object") return null;
+    try {
+      return runScoringEngine(test.answers as Record<number, number>);
+    } catch {
+      return null;
+    }
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,8 +133,9 @@ const ProfilePage = () => {
       <Navbar />
       <div className="container max-w-4xl pt-24 pb-12">
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className={`grid w-full ${role === "student" ? "grid-cols-3" : "grid-cols-1"} mb-6`}>
             <TabsTrigger value="profile">{t.profile.title}</TabsTrigger>
+            {role === "student" && <TabsTrigger value="progress">{t.progress.title}</TabsTrigger>}
             {role === "student" && <TabsTrigger value="tests">{t.profile.tests}</TabsTrigger>}
           </TabsList>
 
@@ -173,6 +189,140 @@ const ProfilePage = () => {
             </Card>
           </TabsContent>
 
+          {/* Progress Tab */}
+          {role === "student" && (
+            <TabsContent value="progress">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                {loadingTests ? (
+                  <Card className="border-border bg-card">
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      {t.dashboard?.loading || "Loading..."}
+                    </CardContent>
+                  </Card>
+                ) : testResults.length === 0 ? (
+                  <Card className="border-border bg-card">
+                    <CardContent className="py-8 text-center">
+                      <p className="text-muted-foreground mb-4">{t.profile.noTests}</p>
+                      <Button asChild>
+                        <a href="/diagnostics">{t.nav.diagnostics}</a>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Stats Cards */}
+                    {(() => {
+                      const sorted = [...testResults].sort(
+                        (a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
+                      );
+                      const first = sorted[0];
+                      const last = sorted[sorted.length - 1];
+                      const best = sorted.reduce((max, r) => r.average_score > max.average_score ? r : max, sorted[0]);
+                      const improvement = Math.round(last.average_score - first.average_score);
+                      const trend = computeTrend(testResults);
+                      const trendIcon = trend === "improving"
+                        ? <TrendingUp className="h-5 w-5 text-green-400" />
+                        : trend === "declining"
+                          ? <TrendingDown className="h-5 w-5 text-destructive" />
+                          : <Minus className="h-5 w-5 text-yellow-400" />;
+                      const trendText = trend === "improving"
+                        ? t.progress.improving
+                        : trend === "declining"
+                          ? t.progress.declining
+                          : t.progress.stable;
+                      const trendColor = trend === "improving"
+                        ? "text-green-400"
+                        : trend === "declining"
+                          ? "text-destructive"
+                          : "text-yellow-400";
+
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Card className="border-border bg-card">
+                              <CardContent className="p-4 text-center">
+                                <BarChart3 className="h-5 w-5 text-primary mx-auto mb-2" />
+                                <div className="text-2xl font-display font-bold">{testResults.length}</div>
+                                <div className="text-xs text-muted-foreground">{t.progress.totalTests}</div>
+                              </CardContent>
+                            </Card>
+                            <Card className="border-border bg-card">
+                              <CardContent className="p-4 text-center">
+                                <Trophy className="h-5 w-5 text-primary mx-auto mb-2" />
+                                <div className="text-2xl font-display font-bold">{Math.round(best.average_score)}%</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {t.progress.bestScore}
+                                </div>
+                              </CardContent>
+                            </Card>
+                            <Card className="border-border bg-card">
+                              <CardContent className="p-4 text-center">
+                                {trendIcon}
+                                <div className={`text-2xl font-display font-bold mt-0.5 ${improvement >= 0 ? "text-green-400" : "text-destructive"}`}>
+                                  {improvement >= 0 ? "+" : ""}{improvement}%
+                                </div>
+                                <div className="text-xs text-muted-foreground">{t.progress.improvement}</div>
+                              </CardContent>
+                            </Card>
+                            <Card className="border-border bg-card">
+                              <CardContent className="p-4 text-center">
+                                <Target className="h-5 w-5 mx-auto mb-2" style={{ color: trendColor === "text-green-400" ? "hsl(142, 71%, 45%)" : trendColor === "text-destructive" ? "hsl(0, 84%, 60%)" : "hsl(48, 96%, 53%)" }} />
+                                <div className={`text-2xl font-display font-bold ${trendColor}`}>{trendText}</div>
+                                <div className="text-xs text-muted-foreground">{t.progress.trend}</div>
+                              </CardContent>
+                            </Card>
+                          </div>
+
+                          {/* Progress Chart */}
+                          <Card className="border-border bg-card">
+                            <CardHeader>
+                              <CardTitle className="font-display text-xl">{t.progress.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <ProgressChart results={testResults} />
+                            </CardContent>
+                          </Card>
+
+                          {/* First vs Last comparison */}
+                          {testResults.length >= 2 && (
+                            <Card className="border-border bg-card">
+                              <CardHeader>
+                                <CardTitle className="font-display text-lg">
+                                  {t.progress.firstAttempt} → {t.progress.lastAttempt}
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                  {(["cognitive_score", "soft_score", "professional_score", "adaptability_score"] as const).map((key) => {
+                                    const catKey = key.replace("_score", "") as "cognitive" | "soft" | "professional" | "adaptability";
+                                    const diff = Math.round(last[key] - first[key]);
+                                    return (
+                                      <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border">
+                                        <span className="text-sm font-medium">{t.categories[catKey]}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm text-muted-foreground">{Math.round(first[key])}%</span>
+                                          <span className="text-muted-foreground">→</span>
+                                          <span className="text-sm font-semibold">{Math.round(last[key])}%</span>
+                                          <span className={`text-xs font-medium ${diff >= 0 ? "text-green-400" : "text-destructive"}`}>
+                                            ({diff >= 0 ? "+" : ""}{diff})
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </motion.div>
+            </TabsContent>
+          )}
+
           {/* Tests Tab */}
           {role === "student" && (
             <TabsContent value="tests">
@@ -202,88 +352,165 @@ const ProfilePage = () => {
                         <p className="text-muted-foreground">{t.results.totalScore}</p>
                       </div>
 
+                      {/* Profile & Confidence Cards (from answers JSONB) */}
+                      {(() => {
+                        const full = getFullResultForTest(selectedTest);
+                        if (!full) return null;
+                        return (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="p-3 rounded-xl bg-card-gradient border border-border text-center">
+                              <Brain size={18} className="mx-auto mb-1.5 text-primary" />
+                              <div className="text-xs text-muted-foreground mb-0.5">{t.results.profileType}</div>
+                              <div className="text-xs font-semibold">{getProfileLabel(full.dominantPattern)}</div>
+                            </div>
+                            <div className="p-3 rounded-xl bg-card-gradient border border-border text-center">
+                              {full.antiCheat.passed ? (
+                                <Shield size={18} className="mx-auto mb-1.5 text-green-400" />
+                              ) : (
+                                <ShieldAlert size={18} className="mx-auto mb-1.5 text-yellow-400" />
+                              )}
+                              <div className="text-xs text-muted-foreground mb-0.5">{t.results.confidence}</div>
+                              <div className="text-xs font-semibold">{Math.round(full.adjustedConfidence * 100)}%</div>
+                            </div>
+                            <div className="p-3 rounded-xl bg-card-gradient border border-border text-center">
+                              <TrendingUp size={18} className="mx-auto mb-1.5 text-green-400" />
+                              <div className="text-xs text-muted-foreground mb-0.5">{t.results.strengthAreas}</div>
+                              <div className="text-xs font-medium leading-tight">
+                                {full.strengthAreas.map(a => (t.categories as Record<string, string>)[a] || a).join(", ")}
+                              </div>
+                            </div>
+                            <div className="p-3 rounded-xl bg-card-gradient border border-border text-center">
+                              <Target size={18} className="mx-auto mb-1.5 text-yellow-400" />
+                              <div className="text-xs text-muted-foreground mb-0.5">{t.results.growthAreas}</div>
+                              <div className="text-xs font-medium leading-tight">
+                                {full.growthAreas.map(a => (t.categories as Record<string, string>)[a] || a).join(", ")}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* Scores by Category */}
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-lg bg-card border border-border">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium">{t.categories.cognitive}</span>
-                            <span className={`text-sm font-bold ${getLevel(selectedTest.cognitive_score).color}`}>
-                              {selectedTest.cognitive_score}%
-                            </span>
+                      {(() => {
+                        const full = getFullResultForTest(selectedTest);
+                        const categories = [
+                          { key: "cognitive_score" as const, cat: "cognitive" as const },
+                          { key: "soft_score" as const, cat: "soft" as const },
+                          { key: "professional_score" as const, cat: "professional" as const },
+                          { key: "adaptability_score" as const, cat: "adaptability" as const },
+                        ];
+                        return (
+                          <div className="grid sm:grid-cols-2 gap-4">
+                            {categories.map(({ key, cat }) => {
+                              const score = selectedTest[key];
+                              const level = getLevel(score);
+                              const catResult = full?.categories.find(c => c.category === cat);
+                              return (
+                                <div key={cat} className="p-4 rounded-lg bg-card border border-border">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="text-sm font-medium">{t.categories[cat]}</span>
+                                    <span className={`text-sm font-bold ${level.color}`}>{score}%</span>
+                                  </div>
+                                  {catResult && (
+                                    <div className="mb-2">
+                                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                        {t.results.skillLevel}: {getSkillLevelLabel(catResult.level)}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                                    <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                                    {getRecommendation(cat, score)}
+                                  </p>
+                                </div>
+                              );
+                            })}
                           </div>
-                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{ width: `${selectedTest.cognitive_score}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                            {getRecommendation("cognitive", selectedTest.cognitive_score)}
-                          </p>
-                        </div>
+                        );
+                      })()}
 
-                        <div className="p-4 rounded-lg bg-card border border-border">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium">{t.categories.soft}</span>
-                            <span className={`text-sm font-bold ${getLevel(selectedTest.soft_score).color}`}>
-                              {selectedTest.soft_score}%
-                            </span>
+                      {/* Anti-cheat status */}
+                      {(() => {
+                        const full = getFullResultForTest(selectedTest);
+                        if (!full) return null;
+                        return (
+                          <div className={`flex items-center gap-2 justify-center text-xs ${full.antiCheat.passed ? "text-green-400" : "text-yellow-400"}`}>
+                            {full.antiCheat.passed ? <Shield size={14} /> : <ShieldAlert size={14} />}
+                            <span>{full.antiCheat.passed ? t.results.antiCheatPassed : t.results.antiCheatFailed}</span>
                           </div>
-                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{ width: `${selectedTest.soft_score}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                            {getRecommendation("soft", selectedTest.soft_score)}
-                          </p>
-                        </div>
+                        );
+                      })()}
 
-                        <div className="p-4 rounded-lg bg-card border border-border">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium">{t.categories.professional}</span>
-                            <span className={`text-sm font-bold ${getLevel(selectedTest.professional_score).color}`}>
-                              {selectedTest.professional_score}%
-                            </span>
-                          </div>
-                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{ width: `${selectedTest.professional_score}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                            {getRecommendation("professional", selectedTest.professional_score)}
-                          </p>
-                        </div>
-
-                        <div className="p-4 rounded-lg bg-card border border-border">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium">{t.categories.adaptability}</span>
-                            <span className={`text-sm font-bold ${getLevel(selectedTest.adaptability_score).color}`}>
-                              {selectedTest.adaptability_score}%
-                            </span>
-                          </div>
-                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{ width: `${selectedTest.adaptability_score}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                            {getRecommendation("adaptability", selectedTest.adaptability_score)}
-                          </p>
-                        </div>
+                      {/* Download Buttons */}
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={() => downloadAsCSV(selectedTest, fullName || "Student")}
+                          className="flex-1 gap-2"
+                        >
+                          <Download size={16} /> {t.results.download}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const cats = t.categories as Record<string, string>;
+                            const full = getFullResultForTest(selectedTest);
+                            const scores = {
+                              cognitive: selectedTest.cognitive_score,
+                              soft: selectedTest.soft_score,
+                              professional: selectedTest.professional_score,
+                              adaptability: selectedTest.adaptability_score,
+                              average: selectedTest.average_score,
+                            };
+                            const recs: Record<string, string> = {};
+                            for (const cat of ["cognitive", "soft", "professional", "adaptability"]) {
+                              recs[cat] = getRecommendation(cat, scores[cat as keyof typeof scores]);
+                            }
+                            if (full) {
+                              printReport({
+                                scores,
+                                profileType: getProfileLabel(full.dominantPattern),
+                                confidence: Math.round(full.adjustedConfidence * 100),
+                                strengthAreas: full.strengthAreas.map(a => cats[a] || a),
+                                growthAreas: full.growthAreas.map(a => cats[a] || a),
+                                recommendations: recs,
+                                date: selectedTest.completed_at,
+                                studentName: fullName || "",
+                                antiCheatPassed: full.antiCheat.passed,
+                                categoryLabels: cats,
+                                translations: {
+                                  reportTitle: t.results.reportTitle,
+                                  totalScore: t.results.totalScore,
+                                  profileType: t.results.profileType,
+                                  confidence: t.results.confidence,
+                                  strengthAreas: t.results.strengthAreas,
+                                  growthAreas: t.results.growthAreas,
+                                  antiCheatPassed: t.results.antiCheatPassed,
+                                  antiCheatFailed: t.results.antiCheatFailed,
+                                  generatedAt: t.results.generatedAt,
+                                },
+                              });
+                            } else {
+                              printBasicReport({
+                                scores,
+                                date: selectedTest.completed_at,
+                                studentName: fullName || "",
+                                categoryLabels: cats,
+                                recommendations: recs,
+                                translations: {
+                                  reportTitle: t.results.reportTitle,
+                                  totalScore: t.results.totalScore,
+                                  generatedAt: t.results.generatedAt,
+                                },
+                              });
+                            }
+                          }}
+                          className="flex-1 gap-2"
+                        >
+                          <Printer size={16} /> {t.results.downloadPDF}
+                        </Button>
                       </div>
-
-                      {/* Download Button */}
-                      <Button
-                        onClick={() => downloadAsCSV(selectedTest, fullName || "Student")}
-                        className="w-full gap-2"
-                      >
-                        <Download size={16} /> {t.results.download}
-                      </Button>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -321,7 +548,7 @@ const ProfilePage = () => {
                                   {new Date(test.completed_at).toLocaleTimeString()}
                                 </p>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                  Когнитивті: {test.cognitive_score}% | Soft: {test.soft_score}% | Кәсіби: {test.professional_score}%
+                                  {t.categories.cognitive}: {test.cognitive_score}% | {t.categories.soft}: {test.soft_score}% | {t.categories.professional}: {test.professional_score}%
                                 </p>
                               </div>
                               <div className="text-right">
