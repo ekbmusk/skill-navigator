@@ -58,8 +58,13 @@ const PhysicsDiagnosticsPage = () => {
   const q = questions[currentQ];
   const progress = ((Object.keys(answers).length) / questions.length) * 100;
 
-  const selectAnswer = (score: number) => {
+  // Track which specific option was selected (by shuffled index) to avoid
+  // highlighting all options with same score (binary 0/1 physics scoring)
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<Record<number, number>>({});
+
+  const selectAnswer = (score: number, optIndex: number) => {
     setAnswers((prev) => ({ ...prev, [q.id]: score }));
+    setSelectedOptionIndex((prev) => ({ ...prev, [q.id]: optIndex }));
   };
 
   // Live anti-cheat check every 4 questions
@@ -212,11 +217,11 @@ const PhysicsDiagnosticsPage = () => {
             <h2 className="font-display text-2xl md:text-3xl font-bold mb-8">{q.text}</h2>
             <div className="space-y-3">
               {seededShuffle(q.options, shuffleSeed + q.id).map((opt, i) => {
-                const selected = answers[q.id] === opt.score;
+                const selected = selectedOptionIndex[q.id] === i && answers[q.id] !== undefined;
                 return (
                   <button
                     key={i}
-                    onClick={() => selectAnswer(opt.score)}
+                    onClick={() => selectAnswer(opt.score, i)}
                     className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${selected ? "border-primary bg-primary/10 shadow-glow" : "border-border bg-card hover:border-primary/30 hover:bg-card/80"
                       }`}
                   >
